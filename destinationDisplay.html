@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Display Board</title>
+<link href="https://fonts.cdnfonts.com/css/advanced-dot-digital-7" rel="stylesheet">
+
+<style>
+.fade-in-text-100 {
+  font-family: Arial;
+  font-size: 100px;
+  animation: fadeIn 5s;
+}
+
+.text-100 {
+  font-family: Arial;
+  font-size: 100px;
+}
+
+.fade-in-text-50 {
+  font-family: Arial;
+  font-size: 50px;
+  animation: fadeIn 5s;
+}
+
+.text-50 {
+  font-family: Arial;
+  font-size: 50px;
+}
+
+.fade-in-text-20 {
+  font-family: Arial;
+  font-size: 20px;
+  animation: fadeIn 5s;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-moz-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-webkit-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-o-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-ms-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+
+</style>
+
+</head>
+<body style="background-color: black;">
+	<table style="width:100%">
+	  <tr>
+		<th><p id="lideIDPanel" class="fade-in-text-50" style="font-family: 'Advanced Dot Digital-7', sans-serif; color: green;">01A</p></th>
+		<th><p id="destinationIDPanel" class="fade-in-text-50" style="font-family: 'Advanced Dot Digital-7', sans-serif; color: lightblue;">Dolnozemska - cez Stodolovu</p></th>
+	  </tr>
+	  <tr>
+	  <th><input type="text" id="lineIDinput" style="width:100%" ><br><br></th>
+	  <th><input type="text" id="destinationInfoIDinput" style="width:80%"><br><br></th>
+	  </tr>
+	  <tr>
+	  <th><button id="reloadButtonID" onclick="reloadDisplaysContent()" style="width:80%"> RELOAD </button></th>
+	  
+	  </tr>
+	</table>
+	
+	<script>
+	var lineID_input_elem = document.getElementById("lineIDinput");
+	var lineIDPanel_output_elem = document.getElementById("lideIDPanel");
+	
+	var destinationInfoID_input_elem =  document.getElementById("destinationInfoIDinput");
+	var destinationIDPanel_output_elem = document.getElementById("destinationIDPanel");
+	
+	function reloadDisplaysContent()
+	{
+		lineIDPanel_output_elem.innerHTML = lineID_input_elem.value;
+		console.log(lineIDPanel_output_elem.innerHTML);
+		
+		destinationIDPanel_output_elem.innerHTML = destinationInfoID_input_elem.value;
+		console.log(destinationIDPanel_output_elem.innerHTML);
+		
+		restartAnimation(lineIDPanel_output_elem);
+		restartAnimation(destinationIDPanel_output_elem);
+	}
+	
+	function restartAnimation(elem)
+	{
+		//when animation starts
+		elem.classList.remove("text-50");
+		elem.classList.add("fade-in-text-50");
+
+		//when animation ends
+		elem.addEventListener( "animationend",  function() {
+			elem.classList.remove("fade-in-text-50");  	
+			elem.classList.add("text-50");
+		} );	 
+	}
+	
+	</script>
+</body>
+</html>
+
+https://stackoverflow.com/questions/44846614/trigger-css-animations-in-javascript

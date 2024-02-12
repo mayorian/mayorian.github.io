@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Internal JS</title>
+</head>
+<body>
+https://www.tutorialspoint.com/html/html_frames.htm
+  <h1>
+    Calling internal function through frames - the error is shown in console
+  </h1> 
+  
+  <hr>
+  
+      <h3>
+        Makes and error Cannot read properties of undefined (reading 'Login').
+      </h3>
+      <div onclick="top.functional.Login()">
+        <h4 style="color:blue; border-style: outset;">
+          Click here for call top.functional.Login();
+        </h4>
+      </div>
+  
+  <hr>
+  
+      <h3>
+       Calls Login() function successfully, without errors.
+      </h3>
+      <div onclick="self.Login(); Login();">
+        <h4 style="color:blue; border-style: outset;">
+          Click here for call Login(); 
+        </h4>
+      </div>
+
+  <hr>
+  <b> Implementation:</b>
+  <hr>
+  
+  <img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/4a0ac8d3-6368-4cdd-839a-a63cbc8af97b.image.png?v=1690492144311" alt="Implementation" width="1400" height="600">
+
+  <script>
+    function Login(){
+      console.info("Login() was called successfully.")
+    }
+  </script>
+  
+</body>
+</html>

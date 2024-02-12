@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+  
+<h4> Be aware ! IE supports only  ECMAScript 5 and lower. But not Webkit ! </h4>
+<p></p>
+<hr>
+ 
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->
+<h4>Combobox with single options</h4>
+
+<p></p>
+  
+    <select id="combobox">
+      <option value="1">986567_HWsettings_there_are0265648468.file</option>
+      <option value="2">5568_SWsettings_are_here.file</option>
+      <option value="3">A8646_TSTsettings_here_are.file</option>
+    </select>
+  
+  <button type="button" onclick="displayAllItems('combobox')">Display text of all options</button>
+  <button type="button" onclick="findItemInOptions('combobox', 'SWsettings')">Get element containing "SWsettings" string</button>
+  <button type="button" onclick="selectItemFromOptions('combobox', 'SWsettings')">Select element containing "SWsettings" string</button>
+  
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->
+ 
+<p></p>
+  
+<hr>
+ 
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->
+<h4>Combobox with multiple options</h4>
+
+<p></p>
+  
+    <select id="comboboxMultiple" multiple>
+      <option value="1">986567_HWsettings_there_are0265648468.file</option>
+      <option value="2">5568_SWsettings_are_here.file</option>
+      <option value="3">A8646_TSTsettings_here_are.file</option>
+    </select>
+
+  <button type="button" onclick="selectAllItemsFromOptions('comboboxMultiple')">Select All elements</button>
+  
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->  
+  
+  
+<script>
+      //how to list all of combobox items
+      function displayAllItems(comboboxElID) {
+          var combobox = document.getElementById(comboboxElID);
+          var txt = "All options: ";
+          var i;
+          for (i = 0; i < combobox.length; i++) {
+              txt = txt + "\n" + combobox.options[i].text;
+          }
+          alert(txt);
+      }
+
+      //howto find combobox Item with specific substring
+      function findItemInOptions(comboboxElID, substring){
+        var combobox = document.getElementById(comboboxElID);
+          var i;
+          for (i = 0; i < combobox.length; i++) {
+              var string = combobox.options[i].text;
+            if(string.indexOf(substring) !== -1){ //true
+              alert("MATCH  --->   " + string + "        value:" + (i+1));
+            }      
+          }  
+      }
+
+      //how to select specific Item from combobox
+      function selectItemFromOptions(comboboxElID, substring){
+        var combobox = document.getElementById(comboboxElID);
+          var i;
+          for (i = 0; i < combobox.length; i++) {
+              var string = combobox.options[i].text;
+            if(string.indexOf(substring) !== -1){ //true
+              alert("MATCH  --->   " + string + "        value:" + (i+1));
+              //select option as true
+              combobox.options[i].selected = true;
+              combobox.onchange();
+              return;
+            }      
+          }  
+      }
+
+      //how to select all of combobox Items
+      function selectAllItemsFromOptions(comboboxElID){
+        var combobox = document.getElementById(comboboxElID);
+          var i;
+          for (i = 0; i < combobox.length; i++) {
+              var string = combobox.options[i].text;
+             // alert("MATCH  --->   " + string + "        value:" + (i+1));
+              //select option as true
+              combobox.options[i].selected = true;          
+          }  
+        //combobox.onchange(); 
+        return; 
+      }
+  
+  
+</script>
+ 
+</body>
+</html>
+
+<!-- 
+http://jsfiddle.net/WfBRr/5/
+
+https://stackoverflow.com/questions/18113495/how-can-i-get-a-list-of-all-values-in-select-box 
+
+https://www.codegrepper.com/code-examples/javascript/how+to+get+select+all+options+value+in+javascript
+
+https://stackoverflow.com/questions/8140862/how-to-select-a-value-in-a-select-dropdown-with-javascript
+
+https://www.codegrepper.com/code-examples/javascript/how+to+get+select+all+options+value+in+javascript
+
+-->

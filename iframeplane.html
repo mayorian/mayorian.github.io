@@ -1,0 +1,69 @@
+<html>
+<head>
+<title>Iframe experiments</title>
+</head>
+
+<body onload="autoRefreshEl('logElement')">
+
+<p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+  
+  <script>
+    
+    // ---------------------------------------------------------------------------------------------------------------
+    // This function is responsible for reloading iframe element
+    // Input param : iframeElementID - ID of the HTML iframe element
+    // STILL IN EXPERIMENTATION PHASIS
+    // ---------------------------------------------------------------------------------------------------------------
+      function autoRefreshEl(iframeElementID)
+        {
+          // Get HTML element reference from input parameter 
+          const elementID = document.getElementById(iframeElementID);
+          console.log(elementID);
+          
+          // Definition of CSS style
+          // let doc = elementID.contentDocument;
+          // doc.body.innerHTML= doc.body.innerHTML + '<style>  table, th, td {border: 1px solid;}  </style>';
+          setCSSstyle(elementID);
+          
+          //Refresh iframe in periodic time interval
+          setInterval(function () {
+            elementID.contentWindow.location.reload();
+            // elementID.getElementById(iframeElementID).src = document.getElementById(iframeElementID).src;
+            // elementID.onload = setCSSstyle(elementID);
+          }, 3000);
+          
+          //Set CSS in iframe for each periodic 10ms
+          setInterval(function () {           
+           setCSSstyle(elementID);            
+          }, 1000);
+        }
+    
+    // ---------------------------------------------------------------------------------------------------------------
+    // This function is responsible for updating CSS style within the HTML element object
+    // Input param : htmlElementObject - HTML element object - requierd from getElementById selector
+    // ---------------------------------------------------------------------------------------------------------------
+    function setCSSstyle(htmlElementObject)
+    {
+      const elementBody = htmlElementObject.contentDocument;
+       elementBody.body.innerHTML= elementBody.body.innerHTML + '<style>  table, th, td {border: 1px solid;} table{width: 100%; height:100%;}  </style>';
+    }
+  </script>
+  
+
+<!--  MAIN HTML FRAME ------------------------------------------------------------------------------------------------------------------------->
+<h1 id="haha">The main HTML frame</h1>
+  
+  <p></p>
+  
+  <h2>External Iframe element</h2>
+<!-- EXTERNAL IFRAME ELEMENT ------------------------------------------------------------------------------------------------------------------>
+     <iframe id="logElement" src="https://jsmayo.glitch.me/iframecss.html" width="100%" height="100%" style="border-style: none;" ></iframe> 
+<!-- END OF EXTERNAL IFRAME ELEMENT ----------------------------------------------------------------------------------------------------------->
+  
+  
+<!-- END OF MAIN HTML FRAME ------------------------------------------------------------------------------------------------------------------->  
+</body>
+</html> 
+
+
+

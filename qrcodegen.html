@@ -1,0 +1,89 @@
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <!--   QR GEN LIB   -->
+    <script src="qrgen.js"></script>
+  
+    <title>QR Generator</title>
+</head>
+<body>
+  
+  <p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+  
+  <div id="whiteSpace" class="d-grid gap-2 d-sm-flex justify-content-sm-center mb-5"></div>
+  
+  <div id="qrcode" class="d-grid gap-2 d-sm-flex justify-content-sm-center mb-5"></div>
+    
+  <div class="b-example-divider"></div>
+  <div class="px-4 pt-5 my-5 text-center border-bottom">
+    <h1 class="display-4 fw-bold">QR Code Generator</h1>
+    <div class="col-lg-6 mx-auto">
+      <p class="lead mb-4">Generate a variety of codes, URLs, strings and numbers.</p>
+      
+      <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mb-5">
+        <label for="inputURL">URL / Text / Number </label><br>
+        <input id ="inputURL" name="inputURL" type="text" class="form-control"  placeholder="https://jsmayo.glitch.me/" value="https://jsmayo.glitch.me/">
+      </div>
+      
+      <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mb-5">
+        <label for="inputWidth">Width [px]</label><br>
+        <input id ="inputWidth" name="inputWidth" type="text" class="form-control"  placeholder="640" value="640">
+      </div>
+      
+      <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mb-5">
+        <label for="inputHeight">Height [px]</label><br>
+        <input id ="inputHeight" name="inputHeight" type="text" class="form-control"  placeholder="640" value="640">
+      </div>
+      
+      <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mb-5">
+        <label for="inputColor">Pick a Color</label><br>
+        <input id ="inputColor" name="inputColor" type="color" class="form-control"  placeholder="black" value="black">
+      </div>
+     
+      <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mb-5">
+        <button id="generateButton" type="button" class="btn btn-primary btn-lg px-4 me-sm-3" onclick="generateQR()">Generate</button>
+        <button id="generateButtonRefresh" type="button" class="btn btn-success btn-lg px-4 me-sm-3" onclick="refreshPage()" style="display:none">To generate another QR please refresh the page. <b>Or just Click Here 😎</b> </button>
+      </div>
+    </div>    
+    
+  </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+
+    <script type="text/javascript">
+   
+      function generateQR()
+      {
+        var inputURL = document.getElementById('inputURL').value;
+        var inputWidth = document.getElementById('inputWidth').value;
+        var inputHeight = document.getElementById('inputHeight').value;
+        var inputColor = document.getElementById('inputColor').value;
+        
+        var qrcode = new QRCode(document.getElementById("qrcode"), {
+        text: inputURL,
+        width: inputWidth,
+        height: inputHeight,
+        colorDark :inputColor,
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+        });
+        
+        var inputColor = document.getElementById('generateButton').style.display = "none"; 
+        var inputColor = document.getElementById('generateButtonRefresh').style.display = "block"; 
+      }    
+      
+      function refreshPage()
+      {
+        window.location.reload();
+      }
+      
+    </script>
+   
+  </body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>HTML Form to QS</title>
+  </head>
+  <body>
+    
+    <p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+
+    <h2 style="font-family:arial;">Attributes and their values included in the QueryString:</h2>
+
+    <hr>
+    <label> <b>Input attributes and values: </b> </label> <br/>
+    <!-- Input form -->
+    <form action="javascript:submit()">
+
+      <label>cmd</label>
+      <input type="text" name="cmd" placeholder="cmd" value="execute"><br />
+
+      <label>data</label>
+       <input type="text" name="data" placeholder="data" value="0,1,2,5,4,65"><br />
+
+      <label>session</label>
+       <input type="text" name="session" placeholder="session" value="fdka84646485sjhfkawb"><br />
+
+      <p></p>
+      
+      <button type="submit">Generate QueryString</button>
+    </form>
+
+    <hr>
+    
+    <!-- Results -->
+    <h3 style="font-family:courier;">Final QueryString:</h3>
+
+    <p></p>
+
+    <h3 id="resultedQueryString" style="font-family:courier;">...</h3>
+
+<script>
+
+  let submit = () => {
+    let values = "";
+    var resultedQueryString = document.getElementById("resultedQueryString");
+    values += "cmd = " + document.getElementsByName("cmd")[0].value + "\n";
+    values += "data = " + document.getElementsByName("data")[0].value + "\n";
+    values += "session = " + document.getElementsByName("session")[0].value + "\n";
+    values += "query = " + "../html/process.dll?cmd="+document.getElementsByName("cmd")[0].value+"&data="+document.getElementsByName("data")[0].value+"&session="+ document.getElementsByName("session")[0].value;
+    alert(values);
+    resultedQueryString.textContent ="query = " + "../html/process.dll?cmd="+document.getElementsByName("cmd")[0].value+"&data="+document.getElementsByName("data")[0].value+"&session="+ document.getElementsByName("session")[0].value;;
+  };
+
+</script>
+    
+  </body>
+</html>

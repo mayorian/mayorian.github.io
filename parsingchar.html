@@ -1,0 +1,57 @@
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+   <title>Parsing</title> 
+  </head>
+<body>
+  
+<p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+
+<label for="stringInput">String of characters : 
+  <input type="text" id="stringInput" name="characters" style="width:600px">
+</label>
+  
+  <br><br>
+  
+<label for="characterRep">Character/s 
+  <input type="text" id="characterRep" name="characterRep" style="width:100px"> 
+  will be replaced by character/s 
+  <input type="text" id="characterAdd" name="characterAdd" style="width:100px"> 
+</label>
+  
+<br><br>
+
+<label for="result">Result:</label><br>
+<p id="result" style="color:red"></p>
+  
+<button onclick="run()" style="width:300px; height:20px"> RUN </button>
+  
+<script>
+  
+function run()
+  {
+    let stringInput = document.getElementById("stringInput").value; 
+    
+    let characterRep = document.getElementById("characterRep").value; 
+    
+    let characterAdd = document.getElementById("characterAdd").value; 
+
+    let regex = new RegExp(characterRep, 'gi');
+    
+    document.getElementById("result").innerHTML = replaceAllCharacters(stringInput, regex, characterAdd);
+    
+  }
+
+function replaceAllCharacters(inputString, searchRegExp, replaceWith) //input , co ma najst, cim to ma zamenit
+	{
+		return inputString.replace(searchRegExp, replaceWith);
+	}
+  </script>
+
+  <code>
+  </code>
+</body>
+</html>
+

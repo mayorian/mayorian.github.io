@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Input type</title>
+  </head>
+  <body>
+    
+    <p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+  
+    <button onclick="myStopFunction()">STOP GENERATING DATA</button>
+    <label for="message">Generated logs True or False</label>
+    <textarea id="message" name="message" rows="500" cols="300"></textarea>
+
+    <script>
+      const message = document.getElementById("message");
+      var generated = "";
+      var i = 0;
+      message.value = "STARTING ...";
+      /**
+       * Returns a random integer between min (inclusive) and max (inclusive).
+       * The value is no lower than min (or the next integer greater than min
+       * if min isn't an integer) and no greater than max (or the next integer
+       * lower than max if max isn't an integer).
+       * Using Math.round() will give you a non-uniform distribution!
+       */
+      function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      const myInterval = setInterval(myTimer, 300);
+
+      function myTimer() {
+        var random = getRandomInt(10, 5000);
+        var boolean = true;
+
+        if (random > 4310) {
+          boolean = false;
+        } else {
+          boolean = true;
+        }
+
+        generated =
+          generated + "\r\n" + new Date().toLocaleTimeString() + "  " + boolean;
+        
+        
+        if(i < 500){
+        message.value = generated;
+          i++;
+        }else{
+          clearInterval(myInterval);
+        }
+      }
+      
+      
+
+      function myStopFunction() {
+        clearInterval(myInterval);
+      }
+    </script>
+  </body>
+</html>

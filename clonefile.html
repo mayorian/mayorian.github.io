@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>CloneFile</title>
+</head>
+  
+<body>
+<input type="file" />
+<a href="runApp('file:///D:/dir/script.bat');">Batch File Command</a>
+  
+<script>
+    document.querySelector('input').addEventListener('change', (e) => {
+        // we'll get the first file in the file input
+        const original = e.target.files[0];
+
+        // no file received, exit
+        if (!original) return;
+
+        // create the clone
+        const clone = new File([original], original.name, {
+            type: original.type,
+            lastModified: original.lastModified,
+        });
+
+        // log the original, the clone, and a comparison to the console
+        console.log(original, clone, original === clone);
+      
+        createNewObjectURL(clone);
+      
+      //Sent clone to batch wchich makes a copy in temp 
+    });
+  
+  function createNewObjectURL(fileObj)
+  {
+    const objectURL = window.URL.createObjectURL(fileObj);
+    console.log(objectURL);
+  }
+  
+  function runApp(which) 
+  {
+  WshShell = new ActiveXObject("WScript.Shell");
+  WshShell.Run (which,1,true);
+  }
+  
+</script>
+
+</body>
+</html>
+
+<!-- https://developer.mozilla.org/en-US/docs/Web/API/File_API/Using_files_from_web_applications -->
+<!-- https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa767914(v=vs.85)?redirectedfrom=MSDN -->

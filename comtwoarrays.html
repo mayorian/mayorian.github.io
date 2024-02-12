@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, Helvetica, sans-serif;">
+
+<p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+  
+<h4> Be aware ! IE supports only  ECMAScript 5 and lower. But not Webkit ! </h4>
+<p></p>
+<hr>
+ 
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->
+<h4>Arrays</h4>
+
+<hr>
+
+<p></p>
+<b>var</b> allGroupsArray = ['aa','bb','cc','dd','ee','ff','gg','hh','ii','jj','kk'];
+<p></p>
+<p></p>
+<b>var</b> whitelistArrayCorrect = ['cc','aa'];
+<p></p>
+<p></p>
+<b>var</b> whitelistArrayUnCorrect = ['ee','yy'];
+<p></p>
+<p></p>
+<b>var</b> blacklistArrayCorrect = ['aa','ee','ff'];
+<p></p>
+<p></p>
+<b>var</b> blacklistArrayUnCorrect = ['aa','xx','ff'];
+<p></p>
+
+<hr>
+
+<p></p>
+<button type="button" onclick="onWhitelistReceived(whitelistArrayCorrect)">Compare allGroupsArray  VS  whitelistArrayCorrect</button>
+<p></p>
+<button type="button" onclick="onWhitelistReceived(whitelistArrayUnCorrect)">Compare allGroupsArray  VS  whitelistArrayUnCorrect</button>
+<p></p>
+
+<hr>
+
+<p></p>
+<button type="button" onclick="onBlackListReceived(blacklistArrayCorrect)">Compare allGroupsArray  VS  blacklistArrayCorrect</button>
+<p></p>
+<button type="button" onclick="onBlackListReceived(blacklistArrayUnCorrect)">Compare allGroupsArray  VS  blacklistArrayUnCorrect</button>
+  
+  
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->
+ 
+<p></p>
+  
+<hr>
+ 
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->
+<h4>Results are visible in console logs.</h4>
+
+<p></p>
+  
+<!----------------------------------------------------------------------------------------------------------------------------------------------------->  
+  
+  
+<script>
+var allGroupsArray = ['aa','bb','cc','dd','ee','ff','gg','hh','ii','jj','kk'];
+var whitelistArrayCorrect = ['cc','aa'];
+var whitelistArrayUnCorrect = ['ee','yy'];
+var blacklistArrayCorrect = ['aa','ee','ff'];
+var blacklistArrayUnCorrect = ['aa','xx','ff'];
+
+  
+function onWhitelistReceived (whitelistArray)
+  {
+    var a = performance.now(); // start timer
+    //----------------------------------------------------------------------------------
+    
+    //mockedArray
+    var allGroupsArray = ['aa','bb','cc','dd','ee','ff','gg','hh','ii','jj','kk'];
+    
+    compareAllGroupsWithSpecificArray(allGroupsArray, whitelistArray, 0, 1);
+    
+   //---------------------------------------------------------------------------------- 
+   var b = performance.now(); //end timer
+   console.warn('It took ' + (b - a) + ' ms.');
+  }
+ 
+function onBlackListReceived(blackListArray)  
+  {
+     var a = performance.now(); // start timer
+    //----------------------------------------------------------------------------------
+    
+    //mockedArray
+    var allGroupsArray = ['aa','bb','cc','dd','ee','ff','gg','hh','ii','jj','kk'];
+    
+    compareAllGroupsWithSpecificArray(allGroupsArray, blackListArray, 1, 0);
+    
+    //---------------------------------------------------------------------------------- 
+   var b = performance.now(); //end timer
+   console.warn('It took ' + (b - a) + ' ms.');
+  }
+  
+function hasIncommingArrayValidItems(allGroupsArray,incommingArray)
+  {
+    var validItemsCounter = 0;
+    
+    console.log("LEGTH  -  " + incommingArray.length)
+    //get item from allGroupsArray
+        for(let i = 0; i < incommingArray.length; i++)
+        {
+          //get all items from incommingArray array
+          for(let j = 0; j < allGroupsArray.length; j++)
+          {
+          //comapre items - if both items are equal, then delete the same item from resultedArray
+            if(incommingArray[i] == allGroupsArray[j])
+            {
+              validItemsCounter ++;
+              
+            }
+            console.log(validItemsCounter);
+          }
+        }
+    
+    if (validItemsCounter == incommingArray.length)
+    {
+      console.log("valid");
+      return 1;
+    }
+    else
+    {
+      console.log("invalid");
+      return 0;
+    }
+  }
+  
+function compareAllGroupsWithSpecificArray(allGroupsArray, incommingArray, isBlackilst, isWhitelist)
+  {
+    console.warn("===================================================================================")
+    var allGroupsArray = ['aa','bb','cc','dd','ee','ff','gg','hh','ii','jj','kk'];
+    console.error("ORIGIN ARRAY: --------------------------------------------------------------------")
+    
+    console.log("Main Array")
+    console.log(allGroupsArray);
+    
+    //duplicates allGroupsArray to resultedArray - used for manipulation with items
+    var resultedArray = allGroupsArray;
+    
+    //delete blacklist items from allGroupsArray
+    if(isBlackilst == 1  && hasIncommingArrayValidItems(allGroupsArray,incommingArray) == 1)
+    {
+      console.log("Blacklist Array")
+      console.log(incommingArray);
+      
+        //get item from allGroupsArray
+        for(let i = 0; i < allGroupsArray.length; i++)
+        {
+          //get all items from incommingArray array
+          for(let j = 0; j < incommingArray.length; j++)
+          {
+          //comapre items - if both items are equal, then delete the same item from resultedArray
+            if(allGroupsArray[i] == incommingArray[j])
+            {
+                 resultedArray.splice(i,1); //splice means - delete one "1" element from index "i"
+             
+            }
+          }
+        }
+       console.error("FINAL RESULT - Blacklist removed from allGroupsArray: ----------------------------")
+      console.log(resultedArray); 
+    }
+    
+    //replace resultedArray with whitelistArray
+    if(isWhitelist == 1  && hasIncommingArrayValidItems(allGroupsArray,incommingArray) == 1)
+    {
+      console.log("Whitelist Array")
+      console.log(incommingArray);
+      
+      resultedArray = incommingArray;
+      
+      console.error("FINAL RESULT - Whitelist: ----------------------------")
+      console.log(resultedArray); 
+    }
+    
+    
+    console.warn("===================================================================================")
+  }
+
+</script>
+ 
+</body>
+</html>
+
+<!-- 
+There are two major approaches
+
+splice(): anArray.splice(index, 1);
+
+ let fruits = ['Apple', 'Banana', 'Mango', 'Orange']
+ let removed = fruits.splice(2, 1);
+ // fruits is ['Apple', 'Banana', 'Orange']
+ // removed is ['Mango']
+delete: delete anArray[index];
+
+ let fruits = ['Apple', 'Banana', 'Mango', 'Orange']
+ let removed = delete fruits(2);
+ // fruits is ['Apple', 'Banana', undefined, 'Orange']
+ // removed is true
+
+https://stackoverflow.com/questions/5767325/how-can-i-remove-a-specific-item-from-an-array
+-->
