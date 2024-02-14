@@ -1,117 +1,104 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Display Board</title>
-<link href="https://fonts.cdnfonts.com/css/advanced-dot-digital-7" rel="stylesheet">
+<!doctype html>
+<html lang="en">
+  
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://fonts.cdnfonts.com/css/ds-point" rel="stylesheet">  
+  </head>
+  
+  <body class="bg-dark">  
+    
+    <div class="container text-center">    
+      <table class="table table-dark table-striped">
+        <tbody>
+ <!-- START HTML DISPLAY ELEMENTS------------------------------------------------------------------------------------------------------------------------------------------------------------>
+         
+          <tr>
+            <td id="lineNumID1" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 130px; color: lightgreen;">01</td>
+            <td id="lineDestID1" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 70px; color: lightgreen;">Dolnozemská cez Trhovisko</td>
+          </tr>
+          
+          <tr>
+            <td id="lineNumID2" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 130px; color: orange;">02</td>
+            <td id="lineDestID2" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 70px; color: orange;">Dom kultúry</td>
+          </tr>
+          
+          <tr>
+            <td id="lineNumID3" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 130px; color: white;">03</td>
+            <td id="lineDestID3" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 70px; color: white;">Nám.obecného úradu</td>
+          </tr>
+          
+          <tr>
+            <td class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 50px; color: white;">-</td>
+            <td class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 50px; color: white;">-</td>
+          </tr>
 
-<style>
-.fade-in-text-100 {
-  font-family: Arial;
-  font-size: 100px;
-  animation: fadeIn 5s;
-}
-
-.text-100 {
-  font-family: Arial;
-  font-size: 100px;
-}
-
-.fade-in-text-50 {
-  font-family: Arial;
-  font-size: 50px;
-  animation: fadeIn 5s;
-}
-
-.text-50 {
-  font-family: Arial;
-  font-size: 50px;
-}
-
-.fade-in-text-20 {
-  font-family: Arial;
-  font-size: 20px;
-  animation: fadeIn 5s;
-}
-
-@keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-@-moz-keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-@-webkit-keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-@-o-keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-@-ms-keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-
-</style>
-
-</head>
-<body style="background-color: black;">
-	<table style="width:100%">
-	  <tr>
-		<th><p id="lideIDPanel" class="fade-in-text-50" style="font-family: 'Advanced Dot Digital-7', sans-serif; color: green;">01A</p></th>
-		<th><p id="destinationIDPanel" class="fade-in-text-50" style="font-family: 'Advanced Dot Digital-7', sans-serif; color: lightblue;">Dolnozemska - cez Stodolovu</p></th>
-	  </tr>
-	  <tr>
-	  <th><input type="text" id="lineIDinput" style="width:100%" ><br><br></th>
-	  <th><input type="text" id="destinationInfoIDinput" style="width:80%"><br><br></th>
-	  </tr>
-	  <tr>
-	  <th><button id="reloadButtonID" onclick="reloadDisplaysContent()" style="width:80%"> RELOAD </button></th>
-	  
-	  </tr>
-	</table>
-	
-	<script>
-	var lineID_input_elem = document.getElementById("lineIDinput");
-	var lineIDPanel_output_elem = document.getElementById("lideIDPanel");
-	
-	var destinationInfoID_input_elem =  document.getElementById("destinationInfoIDinput");
-	var destinationIDPanel_output_elem = document.getElementById("destinationIDPanel");
-	
-	function reloadDisplaysContent()
-	{
-		lineIDPanel_output_elem.innerHTML = lineID_input_elem.value;
-		console.log(lineIDPanel_output_elem.innerHTML);
-		
-		destinationIDPanel_output_elem.innerHTML = destinationInfoID_input_elem.value;
-		console.log(destinationIDPanel_output_elem.innerHTML);
-		
-		restartAnimation(lineIDPanel_output_elem);
-		restartAnimation(destinationIDPanel_output_elem);
-	}
-	
-	function restartAnimation(elem)
-	{
-		//when animation starts
-		elem.classList.remove("text-50");
-		elem.classList.add("fade-in-text-50");
-
-		//when animation ends
-		elem.addEventListener( "animationend",  function() {
-			elem.classList.remove("fade-in-text-50");  	
-			elem.classList.add("text-50");
-		} );	 
-	}
-	
-	</script>
-</body>
+<!-- START INPUTS FOR CHANGING LINE DATA --------------------------------------------------------------------------------------------------------------------------------------------------->
+          <tr>
+            <td>
+                <div class="input-group mb-3">
+                  <div class="input-group-prepend">
+                    <button class="btn btn-primary" type="button" onclick="renderLineData();">Apply</button>
+                  </div>
+                  <input id="lineNumber" type="text" class="form-control" placeholder="Write Line Number" aria-label="" aria-describedby="basic-addon1">
+                </div>
+            </td>
+            <td>
+                <div class="input-group mb-3">
+                  <div class="input-group-prepend">
+                   <!-- <button class="btn btn-primary" type="button">Apply</button>-->
+                  </div>
+                  <input id="lineDestinationData" type="text" class="form-control" placeholder="Write Line Destination" aria-label="" aria-describedby="basic-addon1">
+                </div>
+            </td>
+          </tr>
+<!-- END INPUTS FOR CHANGING LINE DATA ----------------------------------------------------------------------------------------------------------------------------------------------------->          
+        </tbody>
+      </table>
+    </div>
+    
+<!-- END HTML DISPLAY ELEMENTS-------------------------------------------------------------------------------------------------------------------------------------------------------------->
+    
+    
+<!--START JAVASCRIPT inputs ---------------------------------------------------------------------------------------------------------------------------------------------------------------->
+    <script>
+      //line number display elements
+      var lineNumID1 = document.getElementById("lineNumID1");
+      var lineNumID2 = document.getElementById("lineNumID2");
+      var lineNumID3 = document.getElementById("lineNumID3");
+      
+      //line destination display elements
+      var lineDestID1 = document.getElementById("lineDestID1");
+      var lineDestID2 = document.getElementById("lineDestID2");
+      var lineDestID3 = document.getElementById("lineDestID3");      
+      
+      function renderLineData()
+      {
+        //line inputs - number and destination data
+        var lineNumber = document.getElementById("lineNumber");
+        var lineDestinationData = document.getElementById("lineDestinationData");
+        
+        lineNumID1.innerHTML = lineNumber.value;
+        lineNumID2.innerHTML = lineNumber.value;
+        lineNumID3.innerHTML = lineNumber.value;
+        
+        lineDestID1.innerHTML = lineDestinationData.value;
+        lineDestID2.innerHTML = lineDestinationData.value;
+        lineDestID3.innerHTML = lineDestinationData.value;      
+      }
+    
+    </script>
+<!--END JAVASCRIPT inputs ------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+   
+    
+<!-- START ADDITIONAL BS SCRIPTS ----------------------------------------------------------------------------------------------------------------------------------------------------------->   
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>
+<!-- END ADDITIONAL BS SCRIPTS ------------------------------------------------------------------------------------------------------------------------------------------------------------->   
+  </body>
+  
 </html>
-
-https://stackoverflow.com/questions/44846614/trigger-css-animations-in-javascript
