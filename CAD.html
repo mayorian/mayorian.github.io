@@ -216,12 +216,530 @@
 
   </div>
   <!-- Questions bank -->
-  <script src="https://cdn.jsdelivr.net/gh/mayorian/qeustion-bank-exam1@latest/bank.js"></script>
+  <!--<script src="https://cdn.jsdelivr.net/gh/mayorian/qeustion-bank-exam1@latest/bank.js"></script>-->
   <script>
     // =========================
     // 1) QUESTION BANK (EDIT ME)
     // =========================
-    //Loaded from jsdelivr
+    var questionsBankArray = [
+  {
+    "category": "Scripting Overview",
+    "question": "Where do Client Scripts execute in ServiceNow?",
+    "answers": {
+      "a": "Database server",
+      "b": "Browser",
+      "c": "MID Server",
+      "d": "Flow Engine only"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Which actions are typical client-side behaviors? (Select all that apply)",
+    "answers": {
+      "a": "Auto-populate a field based on another field",
+      "b": "Show or hide form sections",
+      "c": "Directly update database records",
+      "d": "Run scheduled jobs"
+    },
+    "rightAnswers": "a,b"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Server-side scripts are primarily used to:",
+    "answers": {
+      "a": "Change CSS themes",
+      "b": "Modify database records",
+      "c": "Play notification sounds",
+      "d": "Adjust browser zoom"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "What can a server-side script trigger in ServiceNow?",
+    "answers": {
+      "a": "Flow Designer process",
+      "b": "Browser refresh animation",
+      "c": "User keyboard input",
+      "d": "Local file download"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Scripts that integrate with third-party applications run on:",
+    "answers": {
+      "a": "Client browser",
+      "b": "MID Server",
+      "c": "Mobile device",
+      "d": "Theme editor"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Which of the following are server-side scripting components? (Select all that apply)",
+    "answers": {
+      "a": "Business Rules",
+      "b": "Script Includes",
+      "c": "GlideRecord",
+      "d": "g_form"
+    },
+    "rightAnswers": "a,b,c"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Which feature enforces logic automatically when a record is inserted or updated?",
+    "answers": {
+      "a": "Client Script",
+      "b": "Business Rule",
+      "c": "Theme",
+      "d": "Dashboard"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Which object is a core server-side API in ServiceNow?",
+    "answers": {
+      "a": "g_form",
+      "b": "GlideRecord",
+      "c": "window",
+      "d": "document"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Which module allows workflow-like automation without traditional workflow scripting?",
+    "answers": {
+      "a": "Flow Designer",
+      "b": "Theme Builder",
+      "c": "Knowledge Base",
+      "d": "Service Portal Designer"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Who can manage all features, applications, and data on the platform?",
+    "answers": {
+      "a": "Application Administrator",
+      "b": "System Administrator",
+      "c": "End User",
+      "d": "ITIL User"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Which role can manage specific system definition components like Business Rules?",
+    "answers": {
+      "a": "System Definition Administrator",
+      "b": "Service Desk Agent",
+      "c": "Knowledge Contributor",
+      "d": "Requester"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "An Application Administrator typically manages:",
+    "answers": {
+      "a": "Entire platform configuration",
+      "b": "Operating system patches",
+      "c": "Features and data of a specific application",
+      "d": "Network firewall rules"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "Which are examples of granular administrative roles? (Select all that apply)",
+    "answers": {
+      "a": "business_rule_admin",
+      "b": "client_script_admin",
+      "c": "ui_policy_admin",
+      "d": "theme_color_admin"
+    },
+    "rightAnswers": "a,b,c"
+  },
+  {
+    "category": "Scripting Overview",
+    "question": "UI Policies belong to which scripting area?",
+    "answers": {
+      "a": "Client-side behavior",
+      "b": "Database indexing",
+      "c": "Network routing",
+      "d": "Hardware configuration"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "How can you quickly save a record for later access in ServiceNow?",
+    "answers": {
+      "a": "Export the record to XML",
+      "b": "Create Favorite from the record context menu",
+      "c": "Restart the instance",
+      "d": "Add to Update Set"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Dragging a record into the favorites area will:",
+    "answers": {
+      "a": "Delete the record",
+      "b": "Create a bookmark/favorite",
+      "c": "Clone the record",
+      "d": "Create a new table"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "If you forget to create a favorite for a record, where can you find it quickly?",
+    "answers": {
+      "a": "System Logs",
+      "b": "Your History",
+      "c": "Update Sets",
+      "d": "Plugins"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Adding the 'Updated' column to a list helps you:",
+    "answers": {
+      "a": "Delete scripts faster",
+      "b": "Sort by most recently edited scripts",
+      "c": "Restart services",
+      "d": "Change user roles"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Adding the 'Updated by' column allows you to:",
+    "answers": {
+      "a": "Track who modified a script",
+      "b": "Change system admin password",
+      "c": "View server logs",
+      "d": "Activate plugins"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "What does searching 'mySearchString' (no special characters) do in the Application Navigator filter?",
+    "answers": {
+      "a": "Exact match only",
+      "b": "Contains search",
+      "c": "Ends with search",
+      "d": "Starts with search"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "What does searching '*mySearchString' return?",
+    "answers": {
+      "a": "No results",
+      "b": "Starts with results",
+      "c": "Ends with results",
+      "d": "Contains results"
+    },
+    "rightAnswers": "d"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "What does searching 'mySearchString%' return?",
+    "answers": {
+      "a": "Exact match only",
+      "b": "Ends with results",
+      "c": "Starts with results",
+      "d": "Case-sensitive search only"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "What does searching '%mySearchString' perform?",
+    "answers": {
+      "a": "Contains search",
+      "b": "Starts with search",
+      "c": "Ends with search",
+      "d": "Table-only search"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Which Application Navigator command opens a table list view in the content page?",
+    "answers": {
+      "a": "<table_name>.form",
+      "b": "<table_name>.list",
+      "c": "<table_name>.config",
+      "d": "<table_name>.workflow"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Which command opens a list view in a new tab or window?",
+    "answers": {
+      "a": "<table_name>.LIST",
+      "b": "<table_name>.list",
+      "c": "<table_name>.form",
+      "d": "<table_name>.config"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Which command opens a form view in the content pane?",
+    "answers": {
+      "a": "<table_name>.form",
+      "b": "<table_name>.FORM",
+      "c": "<table_name>.LIST",
+      "d": "<table_name>.CONFIG"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Which command opens a form view in a new tab?",
+    "answers": {
+      "a": "<table_name>.form",
+      "b": "<table_name>.FORM",
+      "c": "<table_name>.list",
+      "d": "<table_name>.workflow"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Locate Scripts",
+    "question": "Which navigator command opens the table configuration view in a new window?",
+    "answers": {
+      "a": "<table_name>.CONFIG",
+      "b": "<table_name>.FORM",
+      "c": "<table_name>.list",
+      "d": "<table_name>.record"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Every application has a ________.",
+    "answers": {
+      "a": "Update Set",
+      "b": "Scope",
+      "c": "Domain",
+      "d": "Theme"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Application scope determines:",
+    "answers": {
+      "a": "Which of its resources are available to other applications",
+      "b": "Which UI themes users can select",
+      "c": "Which plugins are installed",
+      "d": "Which browser is supported"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Once scope is assigned to an application, it:",
+    "answers": {
+      "a": "Can be changed at any time",
+      "b": "Cannot be changed",
+      "c": "Is removed when you publish",
+      "d": "Automatically becomes Global"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Baseline applications provided by ServiceNow (for example, Incident, Service Catalog, Service Portal) are implemented in the:",
+    "answers": {
+      "a": "Global scope",
+      "b": "Scoped Development",
+      "c": "Personal scope",
+      "d": "MID Server scope"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Why is it difficult to protect/isolate application data in the Global scope?",
+    "answers": {
+      "a": "Because scripts are disabled in Global",
+      "b": "Because everything is in the global scope and isolation is limited",
+      "c": "Because tables cannot be created in Global",
+      "d": "Because only MID Servers can access Global"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Scope protects an application and its artifacts from damage to or from other applications.",
+    "answers": {
+      "a": "True",
+      "b": "False",
+      "c": "Only in Global scope",
+      "d": "Only for baseline apps"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Application Scope",
+    "question": "For an application to share its resources with other applications, ________ must be granted.",
+    "answers": {
+      "a": "A theme",
+      "b": "Explicit permission",
+      "c": "A new instance",
+      "d": "A browser setting"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Application developers specify an application scope when they create a new application.",
+    "answers": {
+      "a": "True",
+      "b": "False",
+      "c": "Only for baseline apps",
+      "d": "Only for Global scope"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Developers can specify what parts of an application are accessible to other applications from: (Select all that apply)",
+    "answers": {
+      "a": "The Custom application record",
+      "b": "Each application Table record",
+      "c": "The System Logs module",
+      "d": "The MID Server record"
+    },
+    "rightAnswers": "a,b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "By default, other applications in the platform can access and change another application's tables and business logic.",
+    "answers": {
+      "a": "True",
+      "b": "False (they cannot unless granted explicit permission)",
+      "c": "True, but only in Scoped Development",
+      "d": "True, but only in Global scope"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Application scope ensures: (Select all that apply)",
+    "answers": {
+      "a": "The application does not interrupt core business services",
+      "b": "Other applications do not interfere with its normal functioning",
+      "c": "All scripts run client-side",
+      "d": "All data is stored in Global scope"
+    },
+    "rightAnswers": "a,b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Artifacts are the application files in an application. Which are listed as examples of artifacts? (Select all that apply)",
+    "answers": {
+      "a": "Tables",
+      "b": "Access Controls",
+      "c": "Client Scripts",
+      "d": "Business Rules"
+    },
+    "rightAnswers": "a,b,c,d"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Scoped application artifacts (including scripts) automatically begin with a:",
+    "answers": {
+      "a": "Namespace identifier",
+      "b": "Role identifier",
+      "c": "Theme identifier",
+      "d": "MID identifier"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Application Scope",
+    "question": "The scope namespace identifier prefix can be changed or removed.",
+    "answers": {
+      "a": "True",
+      "b": "False (it cannot be changed or removed)",
+      "c": "True, but only by admin",
+      "d": "True, but only in Global"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "In the namespace identifier syntax, the Vendor Prefix is:",
+    "answers": {
+      "a": "Set when the application is first created",
+      "b": "Unique ServiceNow-generated prefix for each customer",
+      "c": "The unique script name",
+      "d": "The application ID"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "In the namespace identifier syntax, the Application ID is:",
+    "answers": {
+      "a": "Unique ServiceNow-generated prefix for each customer",
+      "b": "Set when the application is first created",
+      "c": "The unique script name",
+      "d": "Always 'global'"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "In the namespace identifier syntax, the Script name is the:",
+    "answers": {
+      "a": "Unique script name",
+      "b": "Vendor prefix",
+      "c": "Application ID",
+      "d": "Scope record name"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Which example best matches the slide's namespace identifier format?",
+    "answers": {
+      "a": "glide.travel.ExpenseReqBy",
+      "b": "x_cld_travel_ExpenseReqBy",
+      "c": "sys_script.ExpenseReqBy",
+      "d": "travel:ExpenseReqBy"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Application Scope",
+    "question": "Out-of-scope scripts are:",
+    "answers": {
+      "a": "Deleted automatically",
+      "b": "Read-only",
+      "c": "Converted to Global",
+      "d": "Editable only by admin"
+    },
+    "rightAnswers": "b"
+  }
+];
 
     // =========================
     // 2) HELPERS
