@@ -1,1 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CAD Practice</title>
 
+  <style>
+    /* ServiceNow-style exam theme (no radio ::before) */
+    :root{
+      --sn-blue:#1f5bd8;
+      --sn-blue-dark:#1543a8;
+      --sn-bg:#f5f7fa;
+      --sn-card:#ffffff;
+      --sn-border:#d1d5db;
+      --sn-text:#1f2937;
+      --sn-muted:#6b7280;
+      --sn-correct:#dff5e4;
+    }
+
+    body{
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--sn-bg);
+      color: var(--sn-text);
+      margin:0;
+      padding:30px;
+    }
+
+    .wrap{ max-width: 980px; margin: 0 auto; }
+
+    /* Header bar */
+    .header{
+      background: #1f2937;
+      color:white;
+      padding:14px 20px;
+      border-radius:8px;
+      margin-bottom:14px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+    .header h1{
+      margin:0;
+      font-size:20px;
+      font-weight:700;
+      letter-spacing:.3px;
+    }
+    .header .sub{
+      font-size:12px;
+      opacity:.95;
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    .muted{ color: var(--sn-muted); font-size: 13px; }
+
+    /* Category + Search bar */
+    .filters{
+      background: var(--sn-card);
+      border:1px solid var(--sn-border);
+      padding:12px;
+      border-radius:8px;
+      margin-bottom:16px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .filters .label{ font-size:13px; color: var(--sn-muted); margin-right:2px; }
+
+    .search{
+      margin-left:auto;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    input[type="search"]{
+      border:1px solid var(--sn-border);
+      border-radius:6px;
+      padding:8px 10px;
+      min-width: 240px;
+      outline:none;
+      background:#fff;
+    }
+    input[type="search"]:focus{
+      border-color: var(--sn-blue);
+      box-shadow: 0 0 0 3px rgba(31,91,216,.12);
+    }
+
+    /* Buttons */
+    button{
+      background:#ffffff;
+      border:1px solid var(--sn-border);
+      color:var(--sn-text);
+      padding:8px 14px;
+      border-radius:6px;
+      font-weight:600;
+      cursor:pointer;
+      transition:.15s;
+    }
+    button:hover{
+      background:#eef2ff;
+      border-color:var(--sn-blue);
+    }
+    button.active{
+      background:var(--sn-blue);
+      color:white;
+      border-color:var(--sn-blue-dark);
+    }
+    button.small{
+      padding:6px 10px;
+      font-size:12px;
+    }
+
+    /* Question card */
+    .card{
+      background:var(--sn-card);
+      border:1px solid var(--sn-border);
+      border-radius:8px;
+      padding:18px;
+      margin-bottom:16px;
+      box-shadow:0 1px 2px rgba(0,0,0,.08);
+    }
+    .qhead{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+    .qtitle{
+      font-size:17px;
+      font-weight:600;
+      margin:0;
+      line-height:1.35;
+      flex: 1;
+    }
+
+    .pill{
+      background:#eef2ff;
+      border:1px solid #c7d2fe;
+      color:#1e3a8a;
+      font-size:12px;
+      border-radius:6px;
+      padding:4px 8px;
+      white-space:nowrap;
+    }
+
+    /* Answers (no ::before radio) */
+    .answers{ margin-top:14px; display:grid; gap:10px; }
+    .ans{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      border:1px solid var(--sn-border);
+      border-radius:6px;
+      padding:12px;
+      background:white;
+      transition:.15s;
+    }
+    .ans:hover{
+      border-color:var(--sn-blue);
+      background:#f0f6ff;
+    }
+    .ans code{ font-weight:800; }
+
+    /* Correct highlight */
+    .ans.correct{
+      background:var(--sn-correct);
+      border-color:#22a559;
+    }
+
+    .btnrow{
+      margin-top:14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .empty{
+      background: #fff;
+      border: 1px dashed var(--sn-border);
+      border-radius: 8px;
+      padding: 18px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="header">
+      <h1>CAD</h1>
+      <div class="sub">
+        ServiceNow Exam Practice<br/>
+        <span id="counts">0 questions</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <span class="label">Category:</span>
+      <div id="categoryButtons"></div>
+
+      <button id="shuffleBtn" type="button">🔀 Shuffle Questions</button>
+
+      <div class="search">
+        <span class="label">Search:</span>
+        <input id="searchBox" type="search" placeholder="Type to filter questions..." />
+        <button id="clearSearchBtn" class="small" type="button">Clear</button>
+      </div>
+    </div>
+
+    <div id="questionsRoot" aria-live="polite"></div>
+
+  </div>
+  <!-- Questions bank -->
+  <script src="https://cdn.jsdelivr.net/gh/mayorian/qeustion-bank-exam1@dev/bank_practice.js"></script>
+  <script>
+    // =========================
+    // 1) QUESTION BANK (EDIT ME)
+    // ==========================
+
+    // =========================
+    // 2) HELPERS
+    // =========================
+    function parseRightAnswers(rightAnswersStr) {
+      return new Set(
+        String(rightAnswersStr || "")
+          .split(",")
+          .map(s => s.trim().toLowerCase())
+          .filter(Boolean)
+      );
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    function normalizeCategory(c) {
+      var v = (c ?? "Uncategorized").toString().trim();
+      return v ? v : "Uncategorized";
+    }
+
+    function getCategories(questions) {
+      var seen = new Set();
+      var cats = [];
+      questions.forEach(q => {
+        var c = normalizeCategory(q.category);
+        if (!seen.has(c)) { seen.add(c); cats.push(c); }
+      });
+      return cats;
+    }
+
+    function questionMatchesSearch(q, term) {
+      if (!term) return true;
+      var t = term.toLowerCase();
+
+      var inQuestion = String(q.question || "").toLowerCase().includes(t);
+      var inCategory = normalizeCategory(q.category).toLowerCase().includes(t);
+
+      var ansObj = q.answers || {};
+      var inAnswers = Object.keys(ansObj).some(k => String(ansObj[k]).toLowerCase().includes(t));
+
+      return inQuestion || inCategory || inAnswers;
+    }
+
+    function answerCountLabel(rightSet) {
+      // When multiple answers, show number like 2, 3...
+      // When single, show 1
+      return rightSet.size + (rightSet.size === 1 ? " answer" : " answers");
+    }
+
+    // =========================
+    // 3) RENDER QUESTIONS
+    // =========================
+    function renderQuestions(questions, rootEl) {
+      rootEl.innerHTML = "";
+
+      if (!questions.length) {
+        rootEl.innerHTML = '<div class="empty muted">No questions match this filter.</div>';
+        return;
+      }
+
+      questions.forEach((q, idx) => {
+        var card = document.createElement("section");
+        card.className = "card";
+        card.setAttribute("data-category", normalizeCategory(q.category));
+
+        var rightSet = parseRightAnswers(q.rightAnswers);
+
+        // header
+        var header = document.createElement("div");
+        header.className = "qhead";
+
+        var title = document.createElement("p");
+        title.className = "qtitle";
+        title.innerHTML = "<strong>Q" + (idx + 1) + ".</strong> " + escapeHtml(q.question);
+
+        var meta = document.createElement("span");
+        meta.className = "pill";
+        // ✅ category + number of correct answers (2, 3...)
+        meta.textContent = normalizeCategory(q.category) + " • " + answerCountLabel(rightSet);
+
+        header.appendChild(title);
+        header.appendChild(meta);
+
+        // answers
+        var answersWrap = document.createElement("div");
+        answersWrap.className = "answers";
+
+        var keys = Object.keys(q.answers || {}).sort((a,b) => a.localeCompare(b));
+        keys.forEach((key) => {
+          var row = document.createElement("div");
+          row.className = "ans";
+          row.setAttribute("data-option", key.toLowerCase());
+          row.innerHTML =
+            "<code>" + escapeHtml(key) + ".</code>" +
+            "<div>" + escapeHtml(q.answers[key]) + "</div>";
+          answersWrap.appendChild(row);
+        });
+
+        // buttons
+        var btnRow = document.createElement("div");
+        btnRow.className = "btnrow";
+
+        var showBtn = document.createElement("button");
+        showBtn.type = "button";
+        showBtn.textContent = "Show right answer";
+        showBtn.addEventListener("click", function () {
+          card.querySelectorAll(".ans").forEach(r => {
+            var opt = (r.getAttribute("data-option") || "").toLowerCase();
+            r.classList.toggle("correct", rightSet.has(opt));
+          });
+        });
+
+        var clearBtn = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.textContent = "Clear highlight";
+        clearBtn.addEventListener("click", function () {
+          card.querySelectorAll(".ans.correct").forEach(r => r.classList.remove("correct"));
+        });
+
+        btnRow.appendChild(showBtn);
+        btnRow.appendChild(clearBtn);
+
+        card.appendChild(header);
+        card.appendChild(answersWrap);
+        card.appendChild(btnRow);
+
+        rootEl.appendChild(card);
+      });
+    }
+
+    // =========================
+    // 4) CATEGORY BUTTONS + FILTERING + SHUFFLE
+    // =========================
+    var state = {
+      selectedCategory: "__ALL__",
+      searchTerm: ""
+    };
+
+    function shuffleQuestions() {
+      for (let i = questionsBankArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [questionsBankArray[i], questionsBankArray[j]] = [questionsBankArray[j], questionsBankArray[i]];
+      }
+    }
+
+    function applyFiltersAndRender() {
+      var filtered = questionsBankArray
+        .filter(q => state.selectedCategory === "__ALL__" || normalizeCategory(q.category) === state.selectedCategory)
+        .filter(q => questionMatchesSearch(q, state.searchTerm));
+
+      // Update header counts
+      var total = questionsBankArray.length;
+      var shown = filtered.length;
+      document.getElementById("counts").textContent = shown + " / " + total + " questions";
+
+      renderQuestions(filtered, document.getElementById("questionsRoot"));
+    }
+
+    function buildCategoryButtons(categories, containerEl) {
+      containerEl.innerHTML = "";
+
+      function makeBtn(label, value) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = label;
+        b.setAttribute("data-cat", value);
+        b.addEventListener("click", function () {
+          // Only remove active from category buttons (not from Shuffle/Clear/Search buttons)
+          containerEl.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+          b.classList.add("active");
+
+          state.selectedCategory = value;
+          applyFiltersAndRender();
+        });
+        return b;
+      }
+
+      // All button
+      var allBtn = makeBtn("All", "__ALL__");
+      allBtn.classList.add("active");
+      containerEl.appendChild(allBtn);
+
+      // Category buttons
+      categories.forEach(cat => containerEl.appendChild(makeBtn(cat, cat)));
+    }
+
+    // =========================
+    // 5) INIT
+    // =========================
+    (function init(){
+      var cats = getCategories(questionsBankArray);
+      buildCategoryButtons(cats, document.getElementById("categoryButtons"));
+
+      // Search
+      var searchBox = document.getElementById("searchBox");
+      searchBox.addEventListener("input", function(){
+        state.searchTerm = searchBox.value || "";
+        applyFiltersAndRender();
+      });
+
+      document.getElementById("clearSearchBtn").addEventListener("click", function(){
+        searchBox.value = "";
+        state.searchTerm = "";
+        applyFiltersAndRender();
+        searchBox.focus();
+      });
+
+      // Shuffle
+      document.getElementById("shuffleBtn").addEventListener("click", function(){
+        shuffleQuestions();
+        applyFiltersAndRender();
+      });
+
+      applyFiltersAndRender();
+    })();
+  </script>
+</body>
+</html>
