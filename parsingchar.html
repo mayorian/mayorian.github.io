@@ -1,57 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parsing — Futuristic</title>
 
+  <style>
+    :root{
+      --bg0:#05060a;
+      --bg1:#0b1020;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+      --neon1:#57d6ff;
+      --neon2:#a855f7;
+      --neon3:#22c55e;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --radius: 18px;
+      --shadow: 0 20px 60px rgba(0,0,0,.55);
+    }
 
-<!DOCTYPE html>
-<html>
-  <head>
-   <title>Parsing</title> 
-  </head>
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 15% 10%, rgba(88, 214, 255, .18), transparent 55%),
+        radial-gradient(900px 700px at 85% 15%, rgba(168, 85, 247, .18), transparent 55%),
+        radial-gradient(900px 700px at 50% 90%, rgba(34, 197, 94, .10), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    .grid{
+      position:fixed; inset:0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(700px 500px at 50% 10%, black 40%, transparent 70%);
+      opacity:.35;
+      pointer-events:none;
+      animation: drift 14s linear infinite;
+    }
+    @keyframes drift{ from{ transform: translateY(0); } to{ transform: translateY(44px); } }
+
+    .wrap{
+      min-height:100%;
+      display:grid;
+      place-items:center;
+      padding: 38px 18px;
+      position:relative;
+      z-index:1;
+    }
+
+    .card{
+      width:min(980px, 100%);
+      background: linear-gradient(180deg, var(--panel), rgba(255,255,255,.03));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      position:relative;
+    }
+
+    .card::before{
+      content:"";
+      position:absolute; inset:-2px;
+      background: conic-gradient(
+        from 180deg,
+        rgba(87,214,255,.0),
+        rgba(87,214,255,.35),
+        rgba(168,85,247,.35),
+        rgba(34,197,94,.25),
+        rgba(87,214,255,.0)
+      );
+      filter: blur(18px);
+      opacity:.55;
+      z-index:0;
+      pointer-events:none;
+    }
+
+    .inner{ position:relative; z-index:1; padding: 26px; }
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      flex-wrap:wrap;
+      margin-bottom: 18px;
+    }
+
+    .brand{ display:flex; gap:14px; align-items:center; }
+    .logo{
+      width:46px; height:46px;
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.30), transparent 45%),
+        linear-gradient(135deg, rgba(87,214,255,.75), rgba(168,85,247,.65));
+      border: 1px solid rgba(255,255,255,.20);
+      box-shadow: 0 10px 30px rgba(87,214,255,.15);
+      position:relative;
+    }
+    .logo::after{
+      content:"";
+      position:absolute; inset:10px;
+      border-radius: 10px;
+      border: 1px dashed rgba(255,255,255,.22);
+      opacity:.7;
+    }
+
+    h1{ margin:0; font-size: 20px; letter-spacing:.2px; }
+    .sub{ margin: 3px 0 0; color: var(--muted); font-size: 13px; line-height: 1.35; max-width: 62ch; }
+
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.78);
+      font-size: 12px;
+      white-space:nowrap;
+    }
+    .dot{ width:8px; height:8px; border-radius:999px; background: var(--neon3); box-shadow: 0 0 16px rgba(34,197,94,.65); }
+
+    .content{ display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; }
+    @media (max-width: 900px){ .content{ grid-template-columns:1fr; } }
+
+    .panel{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .panel h2{
+      margin:0 0 10px;
+      font-size: 14px;
+      letter-spacing:.35px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.78);
+    }
+
+    label{
+      display:block;
+      margin: 10px 0 12px;
+      color: rgba(255,255,255,.78);
+      font-size: 13px;
+    }
+
+    .field{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top: 8px;
+    }
+
+    input[type="text"]{
+      width:100%;
+      max-width: 100%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.04);
+      color: rgba(255,255,255,.92);
+      outline:none;
+      transition: border-color .12s ease, background .12s ease;
+    }
+    input[type="text"]:focus{
+      border-color: rgba(87,214,255,.45);
+      background: rgba(87,214,255,.06);
+    }
+
+    .split{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 520px){ .split{ grid-template-columns:1fr; } }
+
+    .btnRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 12px;
+    }
+
+    .btn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      padding: 10px 12px;
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight: 700;
+      letter-spacing:.2px;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .btn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.30);
+      background: rgba(255,255,255,.08);
+    }
+    .btn:active{ transform: translateY(0px); }
+
+    .btn.primary{
+      background:
+        radial-gradient(120px 80px at 20% 20%, rgba(255,255,255,.18), transparent 50%),
+        linear-gradient(135deg, rgba(87,214,255,.55), rgba(168,85,247,.45));
+      border-color: rgba(87,214,255,.30);
+      box-shadow: 0 12px 30px rgba(87,214,255,.10);
+    }
+
+    .result{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      min-height: 54px;
+      white-space: pre-wrap;
+      overflow-wrap:anywhere;
+    }
+    .result.ok{ color: rgba(255,255,255,.92); }
+    .result.bad{ color: rgba(239,68,68,.95); }
+
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .help{
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: 10px;
+    }
+    .help code{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 1px 6px;
+      border-radius: 999px;
+    }
+
+    .imgBar{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      margin-bottom: 14px;
+    }
+    .imgBar img{
+      width: 180px;
+      max-width: 45vw;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+    }
+
+    .tinyPill{
+      margin-left:auto;
+      font-size: 12px;
+      color: rgba(255,255,255,.72);
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      white-space:nowrap;
+    }
+  </style>
+</head>
+
 <body>
-  
-<p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
+  <div class="grid" aria-hidden="true"></div>
 
-<label for="stringInput">String of characters : 
-  <input type="text" id="stringInput" name="characters" style="width:600px">
-</label>
-  
-  <br><br>
-  
-<label for="characterRep">Character/s 
-  <input type="text" id="characterRep" name="characterRep" style="width:100px"> 
-  will be replaced by character/s 
-  <input type="text" id="characterAdd" name="characterAdd" style="width:100px"> 
-</label>
-  
-<br><br>
+  <main class="wrap">
+    <section class="card">
+      <div class="inner">
+        <header>
+          <div class="brand">
+            <div class="logo" aria-hidden="true"></div>
+            <div>
+              <h1>Parsing Console</h1>
+              <p class="sub">Replace characters using a live RegExp preview, with safe escaping (optional) and instant telemetry.</p>
+            </div>
+          </div>
+          <div class="pill"><span class="dot"></span>Online</div>
+        </header>
 
-<label for="result">Result:</label><br>
-<p id="result" style="color:red"></p>
-  
-<button onclick="run()" style="width:300px; height:20px"> RUN </button>
-  
-<script>
-  
-function run()
-  {
-    let stringInput = document.getElementById("stringInput").value; 
-    
-    let characterRep = document.getElementById("characterRep").value; 
-    
-    let characterAdd = document.getElementById("characterAdd").value; 
+        <div class="imgBar">
+          <img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" />
+          <div class="tinyPill mono">REGEX / REPLACE</div>
+        </div>
 
-    let regex = new RegExp(characterRep, 'gi');
-    
-    document.getElementById("result").innerHTML = replaceAllCharacters(stringInput, regex, characterAdd);
-    
-  }
+        <div class="content">
+          <!-- LEFT -->
+          <div class="panel">
+            <h2>Inputs</h2>
 
-function replaceAllCharacters(inputString, searchRegExp, replaceWith) //input , co ma najst, cim to ma zamenit
-	{
-		return inputString.replace(searchRegExp, replaceWith);
-	}
+            <label for="stringInput">String of characters</label>
+            <input type="text" id="stringInput" placeholder="Type or paste text here…" />
+
+            <div class="split">
+              <div>
+                <label for="characterRep">Find</label>
+                <input type="text" id="characterRep" placeholder="e.g. ." />
+              </div>
+              <div>
+                <label for="characterAdd">Replace with</label>
+                <input type="text" id="characterAdd" placeholder="e.g. -" />
+              </div>
+            </div>
+
+            <div class="btnRow">
+              <button class="btn primary" id="runBtn" type="button">RUN</button>
+              <button class="btn" id="swapBtn" type="button">Swap</button>
+              <button class="btn" id="copyBtn" type="button" disabled>Copy result</button>
+              <button class="btn" id="clearBtn" type="button">Clear</button>
+            </div>
+
+            <div class="help">
+              Tip: If you want to match literal special characters (like <code>.</code> or <code>+</code>), enable “Literal mode”
+              (we escape regex metacharacters automatically).
+            </div>
+          </div>
+
+          <!-- RIGHT -->
+          <div class="panel">
+            <h2>Output</h2>
+
+            <div class="row mono" style="margin-bottom:10px;">
+              <span>RegExp</span>
+              <span id="regexVal">/—/gi</span>
+            </div>
+
+            <div class="row" style="margin-bottom:10px;">
+              <span>Matches</span>
+              <span id="matchVal">—</span>
+            </div>
+
+            <div class="row" style="margin-bottom:10px;">
+              <span>Mode</span>
+              <span id="modeVal">Literal (escaped)</span>
+            </div>
+
+            <label style="margin-top:0;">
+              <input type="checkbox" id="literalMode" checked />
+              Literal mode (escape regex characters)
+            </label>
+
+            <label style="margin-top:0;">
+              <input type="checkbox" id="liveMode" checked />
+              Live preview (update as you type)
+            </label>
+
+            <label for="result" style="margin-top:12px;">Result</label>
+            <div id="result" class="result bad mono">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+
+    const stringInput = $("#stringInput");
+    const characterRep = $("#characterRep");
+    const characterAdd = $("#characterAdd");
+
+    const resultEl = $("#result");
+    const regexVal = $("#regexVal");
+    const matchVal = $("#matchVal");
+    const modeVal  = $("#modeVal");
+
+    const literalMode = $("#literalMode");
+    const liveMode = $("#liveMode");
+
+    const runBtn = $("#runBtn");
+    const swapBtn = $("#swapBtn");
+    const copyBtn = $("#copyBtn");
+    const clearBtn = $("#clearBtn");
+
+    function escapeForRegExp(str) {
+      // Escapes regex metacharacters so user input is treated literally
+      // ( . * + ? ^ $ { } ( ) | [ ] \ )
+      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function safeBuildRegExp(pattern, flags) {
+      return new RegExp(pattern, flags);
+    }
+
+    function countMatches(text, re) {
+      if (!text || !re) return 0;
+      const m = text.match(re);
+      return m ? m.length : 0;
+    }
+
+    function setResult(text, ok) {
+      resultEl.textContent = text;
+      resultEl.classList.toggle("ok", ok);
+      resultEl.classList.toggle("bad", !ok);
+      copyBtn.disabled = !ok || !text || text === "—";
+    }
+
+    function run() {
+      const input = stringInput.value ?? "";
+      const findRaw = characterRep.value ?? "";
+      const replaceWith = characterAdd.value ?? "";
+
+      // Nothing to find => show warning instead of replacing everything
+      if (!findRaw) {
+        regexVal.textContent = "/—/gi";
+        matchVal.textContent = "—";
+        modeVal.textContent = literalMode.checked ? "Literal (escaped)" : "Regex (raw)";
+        setResult("Enter something in “Find” to run a replacement.", false);
+        return;
+      }
+
+      const pattern = literalMode.checked ? escapeForRegExp(findRaw) : findRaw;
+
+      try {
+        const re = safeBuildRegExp(pattern, "gi");
+
+        regexVal.textContent = `/${pattern}/gi`;
+        modeVal.textContent = literalMode.checked ? "Literal (escaped)" : "Regex (raw)";
+
+        const matches = countMatches(input, re);
+        matchVal.textContent = String(matches);
+
+        const output = input.replace(re, replaceWith);
+        setResult(output, true);
+      } catch (err) {
+        // invalid regex in raw mode
+        regexVal.textContent = `/${pattern}/gi`;
+        matchVal.textContent = "—";
+        setResult(`Invalid RegExp: ${err.message}`, false);
+      }
+    }
+
+    // Events
+    runBtn.addEventListener("click", run);
+
+    swapBtn.addEventListener("click", () => {
+      const a = characterRep.value;
+      characterRep.value = characterAdd.value;
+      characterAdd.value = a;
+      if (liveMode.checked) run();
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const text = resultEl.textContent;
+      if (!text || text === "—") return;
+      try {
+        await navigator.clipboard.writeText(text);
+        // small feedback
+        copyBtn.textContent = "Copied ✓";
+        setTimeout(() => (copyBtn.textContent = "Copy result"), 900);
+      } catch {
+        setResult("Clipboard copy failed (browser permission).", false);
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      stringInput.value = "";
+      characterRep.value = "";
+      characterAdd.value = "";
+      regexVal.textContent = "/—/gi";
+      matchVal.textContent = "—";
+      modeVal.textContent = literalMode.checked ? "Literal (escaped)" : "Regex (raw)";
+      setResult("—", false);
+    });
+
+    // Live mode wiring
+    const maybeRun = () => { if (liveMode.checked) run(); };
+    stringInput.addEventListener("input", maybeRun);
+    characterRep.addEventListener("input", maybeRun);
+    characterAdd.addEventListener("input", maybeRun);
+    literalMode.addEventListener("change", maybeRun);
+    liveMode.addEventListener("change", maybeRun);
+
+    // Boot
+    modeVal.textContent = literalMode.checked ? "Literal (escaped)" : "Regex (raw)";
+    setResult("—", false);
   </script>
-
-  <code>
-  </code>
 </body>
 </html>
-
