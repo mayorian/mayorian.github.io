@@ -1,104 +1,837 @@
 <!doctype html>
 <html lang="en">
-  
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Destination Display</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <link href="https://fonts.cdnfonts.com/css/ds-point" rel="stylesheet">  
-  </head>
-  
-  <body class="bg-dark">  
-    
-    <div class="container text-center">    
-      <table class="table table-dark table-striped">
-        <tbody>
- <!-- START HTML DISPLAY ELEMENTS------------------------------------------------------------------------------------------------------------------------------------------------------------>
-         
-          <tr>
-            <td id="lineNumID1" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 130px; color: lightgreen;">01</td>
-            <td id="lineDestID1" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 70px; color: lightgreen;">Dolnozemská cez Trhovisko</td>
-          </tr>
-          
-          <tr>
-            <td id="lineNumID2" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 130px; color: orange;">02</td>
-            <td id="lineDestID2" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 70px; color: orange;">Dom kultúry</td>
-          </tr>
-          
-          <tr>
-            <td id="lineNumID3" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 130px; color: white;">03</td>
-            <td id="lineDestID3" class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 70px; color: white;">Nám.obecného úradu</td>
-          </tr>
-          
-          <tr>
-            <td class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 50px; color: white;">-</td>
-            <td class="align-middle" style="font-family: 'DS-Point', sans-serif; font-size: 50px; color: white;">-</td>
-          </tr>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Futuristic Destination Display</title>
 
-<!-- START INPUTS FOR CHANGING LINE DATA --------------------------------------------------------------------------------------------------------------------------------------------------->
-          <tr>
-            <td>
-                <div class="input-group mb-3">
-                  <div class="input-group-prepend">
-                    <button class="btn btn-primary" type="button" onclick="renderLineData();">Apply</button>
-                  </div>
-                  <input id="lineNumber" type="text" class="form-control" placeholder="Write Line Number" aria-label="" aria-describedby="basic-addon1">
-                </div>
-            </td>
-            <td>
-                <div class="input-group mb-3">
-                  <div class="input-group-prepend">
-                   <!-- <button class="btn btn-primary" type="button">Apply</button>-->
-                  </div>
-                  <input id="lineDestinationData" type="text" class="form-control" placeholder="Write Line Destination" aria-label="" aria-describedby="basic-addon1">
-                </div>
-            </td>
-          </tr>
-<!-- END INPUTS FOR CHANGING LINE DATA ----------------------------------------------------------------------------------------------------------------------------------------------------->          
-        </tbody>
-      </table>
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Your font -->
+  <link href="https://fonts.cdnfonts.com/css/ds-point" rel="stylesheet">
+
+  <style>
+    :root{
+      --hud-bg:#070a12;
+      --hud-panel:#0b1022;
+      --hud-border: rgba(120, 220, 255, .22);
+      --hud-glow: rgba(120, 220, 255, .25);
+      --text: #cfefff;
+      --muted: rgba(207,239,255,.65);
+      --accent: #7ad7ff;
+      --scanline: rgba(255,255,255,.035);
+
+      --num-size: 120px;
+      --dest-size: 66px;
+      --glow-strength: 22px;
+
+      --ticker-speed: 18s;
+      --marquee-speed: 12s;
+    }
+
+    body{
+      background: radial-gradient(900px 450px at 30% 10%, rgba(122,215,255,.10), transparent 60%),
+                  radial-gradient(900px 450px at 80% 0%, rgba(195,80,255,.08), transparent 60%),
+                  linear-gradient(180deg, #050611, #03040a 60%, #020309);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* HUD frame */
+    .hud-wrap{
+      margin-top: 18px;
+      border-radius: 22px;
+      padding: 14px;
+      background:
+        linear-gradient(180deg, rgba(122,215,255,.10), rgba(122,215,255,.04)),
+        radial-gradient(1200px 500px at 50% 0%, rgba(122,215,255,.12), transparent 65%),
+        var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      box-shadow:
+        0 0 0 1px rgba(122,215,255,.08) inset,
+        0 18px 60px rgba(0,0,0,.55),
+        0 0 50px rgba(122,215,255,.09);
+      position: relative;
+    }
+
+    /* Scanlines + subtle noise */
+    .hud-wrap::before{
+      content:"";
+      position:absolute; inset:0;
+      border-radius: 22px;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent 2px,
+          var(--scanline) 3px
+        );
+      mix-blend-mode: screen;
+      pointer-events:none;
+      opacity: .45;
+    }
+    .hud-wrap::after{
+      content:"";
+      position:absolute; inset:0;
+      border-radius: 22px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+      opacity: .08;
+      pointer-events:none;
+    }
+
+    .hud-top{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      padding: 8px 10px 12px;
+      border-bottom: 1px solid rgba(122,215,255,.16);
+      position: relative;
+      z-index: 1;
+    }
+
+    .hud-label{
+      font-size: 12px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .hud-banner{
+      font-family: 'DS-Point', sans-serif;
+      font-size: 44px;
+      line-height: 1;
+      color: var(--accent);
+      text-shadow: 0 0 var(--glow-strength) rgba(122,215,255,.55);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 75%;
+    }
+
+    .hud-clock{
+      font-size: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      text-align:right;
+      min-width: 120px;
+    }
+
+    /* Display table */
+    .display{
+      margin-top: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    table{
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 10px; /* row gaps */
+    }
+
+    .row-card{
+      background: linear-gradient(180deg, rgba(122,215,255,.08), rgba(122,215,255,.03));
+      border: 1px solid rgba(122,215,255,.14);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
+    }
+
+    .cell-num, .cell-dest{
+      font-family: 'DS-Point', sans-serif;
+      vertical-align: middle;
+      padding: 16px 18px;
+    }
+
+    .cell-num{
+      width: 160px;
+      font-size: var(--num-size);
+      line-height: .9;
+      letter-spacing: .06em;
+      text-shadow: 0 0 var(--glow-strength) rgba(122,215,255,.5);
+      border-right: 1px solid rgba(122,215,255,.12);
+    }
+    .cell-dest{
+      font-size: var(--dest-size);
+      line-height: 1.05;
+      text-shadow: 0 0 calc(var(--glow-strength) - 6px) rgba(122,215,255,.35);
+      overflow: hidden;
+    }
+
+    /* Ticker */
+    .hud-ticker{
+      margin-top: 12px;
+      border-top: 1px solid rgba(122,215,255,.16);
+      padding: 10px 10px 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .ticker-wrap{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+
+    .ticker-tag{
+      font-size: 11px;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+      color: rgba(122,215,255,.85);
+      border: 1px solid rgba(122,215,255,.25);
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(122,215,255,.08);
+      white-space: nowrap;
+    }
+
+    .ticker-viewport{
+      position: relative;
+      overflow: hidden;
+      flex: 1;
+      border-radius: 12px;
+      border: 1px solid rgba(122,215,255,.12);
+      background: rgba(8,12,25,.45);
+      padding: 8px 12px;
+    }
+
+    .ticker-text{
+      font-family: 'DS-Point', sans-serif;
+      font-size: 34px;
+      white-space: nowrap;
+      display: inline-block;
+      color: var(--text);
+      text-shadow: 0 0 calc(var(--glow-strength) - 8px) rgba(122,215,255,.35);
+      transform: translateX(0);
+    }
+
+    /* Marquee animation for ticker */
+    .marquee .ticker-text{
+      padding-left: 100%;
+      animation: marquee var(--ticker-speed) linear infinite;
+    }
+    @keyframes marquee{
+      0%{ transform: translateX(0); }
+      100%{ transform: translateX(-100%); }
+    }
+
+    /* Destination animations */
+    .anim-none{ animation: none !important; }
+    .anim-pulse{
+      animation: pulse 1.7s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{ filter: brightness(1); }
+      50%{ filter: brightness(1.35); }
+    }
+
+    .anim-flicker{
+      animation: flicker 2.8s infinite;
+    }
+    @keyframes flicker{
+      0%, 19%, 22%, 62%, 64%, 70%, 100% { opacity: 1; }
+      20%, 21%, 63%, 69% { opacity: .55; }
+    }
+
+    .anim-glitch{
+      position: relative;
+      animation: glitchSkew 2.2s infinite linear;
+    }
+    @keyframes glitchSkew{
+      0%,100%{ transform: skewX(0deg); }
+      20%{ transform: skewX(-4deg); }
+      21%{ transform: skewX(0deg); }
+      60%{ transform: skewX(3deg); }
+      61%{ transform: skewX(0deg); }
+    }
+    .anim-glitch::before, .anim-glitch::after{
+      content: attr(data-text);
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%;
+      overflow: hidden;
+      opacity: .75;
+      pointer-events:none;
+    }
+    .anim-glitch::before{
+      transform: translate(2px, -1px);
+      clip-path: inset(0 0 60% 0);
+      filter: hue-rotate(35deg);
+    }
+    .anim-glitch::after{
+      transform: translate(-2px, 1px);
+      clip-path: inset(55% 0 0 0);
+      filter: hue-rotate(-35deg);
+    }
+
+    /* Per-row marquee scroll for long destinations */
+    .dest-marquee{
+      display: inline-block;
+      padding-left: 100%;
+      animation: destMarquee var(--marquee-speed) linear infinite;
+    }
+    @keyframes destMarquee{
+      0%{ transform: translateX(0); }
+      100%{ transform: translateX(-100%); }
+    }
+
+    /* Slide-in on apply */
+    .anim-slidein{
+      animation: slidein .55s ease-out;
+    }
+    @keyframes slidein{
+      from{ transform: translateX(12px); opacity: .0; }
+      to{ transform: translateX(0); opacity: 1; }
+    }
+
+    /* Typewriter */
+    .typewriter{
+      overflow: hidden;
+      border-right: 2px solid rgba(122,215,255,.65);
+      white-space: nowrap;
+      animation: typing 1.5s steps(28, end), caret .75s step-end infinite;
+    }
+    @keyframes typing{
+      from{ width: 0; }
+      to{ width: 100%; }
+    }
+    @keyframes caret{
+      from, to { border-color: transparent; }
+      50% { border-color: rgba(122,215,255,.65); }
+    }
+
+    /* Control panel */
+    .controls{
+      margin-top: 14px;
+      background: rgba(8,12,25,.45);
+      border: 1px solid rgba(122,215,255,.14);
+      border-radius: 18px;
+      padding: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .form-control, .form-select, .form-range{
+      background: rgba(6,10,20,.85);
+      border: 1px solid rgba(122,215,255,.16);
+      color: var(--text);
+    }
+    .form-control::placeholder{ color: rgba(207,239,255,.45); }
+    .form-control:focus, .form-select:focus{
+      box-shadow: 0 0 0 .2rem rgba(122,215,255,.15);
+      border-color: rgba(122,215,255,.35);
+    }
+
+    .btn-hud{
+      border: 1px solid rgba(122,215,255,.22);
+      background: rgba(122,215,255,.10);
+      color: var(--text);
+    }
+    .btn-hud:hover{
+      background: rgba(122,215,255,.18);
+      border-color: rgba(122,215,255,.35);
+    }
+
+    .mini{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .divider{
+      height: 1px;
+      background: rgba(122,215,255,.14);
+      margin: 10px 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="hud-wrap">
+
+      <!-- TOP BANNER (Static text) -->
+      <div class="hud-top">
+        <div>
+          <div class="hud-label">Destination Display</div>
+          <div id="bannerText" class="hud-banner">BRATISLAVA • NIGHT SERVICE</div>
+        </div>
+        <div class="hud-clock">
+          <div class="hud-label">Local</div>
+          <div id="clock">--:--:--</div>
+        </div>
+      </div>
+
+      <!-- DISPLAY -->
+      <div class="display">
+        <table>
+          <tbody>
+            <tr class="row-card">
+              <td id="lineNumID1" class="cell-num" style="color:#86ffb3;">01</td>
+              <td id="lineDestID1" class="cell-dest" style="color:#86ffb3;">Dolnozemská cez Trhovisko</td>
+            </tr>
+
+            <tr class="row-card">
+              <td id="lineNumID2" class="cell-num" style="color:#ffb24a;">02</td>
+              <td id="lineDestID2" class="cell-dest" style="color:#ffb24a;">Dom kultúry</td>
+            </tr>
+
+            <tr class="row-card">
+              <td id="lineNumID3" class="cell-num" style="color:#e9f7ff;">03</td>
+              <td id="lineDestID3" class="cell-dest" style="color:#e9f7ff;">Nám.obecného úradu</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BOTTOM TICKER (Static text + animation option) -->
+      <div class="hud-ticker">
+        <div class="ticker-wrap">
+          <div class="ticker-tag">INFO</div>
+          <div id="tickerViewport" class="ticker-viewport marquee">
+            <span id="tickerText" class="ticker-text">Welcome aboard • Doors close automatically • Have a safe trip</span>
+          </div>
+        </div>
+      </div>
     </div>
-    
-<!-- END HTML DISPLAY ELEMENTS-------------------------------------------------------------------------------------------------------------------------------------------------------------->
-    
-    
-<!--START JAVASCRIPT inputs ---------------------------------------------------------------------------------------------------------------------------------------------------------------->
-    <script>
-      //line number display elements
-      var lineNumID1 = document.getElementById("lineNumID1");
-      var lineNumID2 = document.getElementById("lineNumID2");
-      var lineNumID3 = document.getElementById("lineNumID3");
-      
-      //line destination display elements
-      var lineDestID1 = document.getElementById("lineDestID1");
-      var lineDestID2 = document.getElementById("lineDestID2");
-      var lineDestID3 = document.getElementById("lineDestID3");      
-      
-      function renderLineData()
-      {
-        //line inputs - number and destination data
-        var lineNumber = document.getElementById("lineNumber");
-        var lineDestinationData = document.getElementById("lineDestinationData");
-        
-        lineNumID1.innerHTML = lineNumber.value;
-        lineNumID2.innerHTML = lineNumber.value;
-        lineNumID3.innerHTML = lineNumber.value;
-        
-        lineDestID1.innerHTML = lineDestinationData.value;
-        lineDestID2.innerHTML = lineDestinationData.value;
-        lineDestID3.innerHTML = lineDestinationData.value;      
+
+    <!-- CONTROL PANEL -->
+    <div class="controls">
+      <div class="row g-3 align-items-end">
+
+        <!-- Global: presets -->
+        <div class="col-12 col-lg-3">
+          <label class="form-label mini">Theme preset</label>
+          <select id="preset" class="form-select">
+            <option value="matrix">Matrix Green</option>
+            <option value="amber">Amber Classic</option>
+            <option value="ice" selected>Ice Blue HUD</option>
+            <option value="magenta">Magenta Neon</option>
+          </select>
+        </div>
+
+        <!-- Global: font sizes -->
+        <div class="col-6 col-lg-2">
+          <label class="form-label mini">Number size</label>
+          <input id="numSize" class="form-range" type="range" min="70" max="150" value="120">
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label mini">Destination size</label>
+          <input id="destSize" class="form-range" type="range" min="40" max="90" value="66">
+        </div>
+
+        <!-- Global: glow -->
+        <div class="col-12 col-lg-2">
+          <label class="form-label mini">Glow strength</label>
+          <input id="glowStrength" class="form-range" type="range" min="0" max="40" value="22">
+        </div>
+
+        <!-- Save/Load -->
+        <div class="col-12 col-lg-3 d-flex gap-2">
+          <button class="btn btn-hud w-100" onclick="saveConfig()">Save</button>
+          <button class="btn btn-hud w-100" onclick="loadConfig()">Load</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Static Text controls -->
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-6">
+          <label class="form-label mini">Top banner (static text)</label>
+          <input id="bannerInput" class="form-control" placeholder="e.g. BRATISLAVA • NIGHT SERVICE">
+        </div>
+        <div class="col-12 col-lg-4">
+          <label class="form-label mini">Bottom ticker (static text)</label>
+          <input id="tickerInput" class="form-control" placeholder="e.g. Welcome aboard • Next stop ...">
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label mini">Ticker mode</label>
+          <select id="tickerMode" class="form-select">
+            <option value="marquee" selected>Marquee</option>
+            <option value="static">Static</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Per line controls -->
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-2">
+          <label class="form-label mini">Edit row</label>
+          <select id="rowSelect" class="form-select">
+            <option value="1" selected>Row 1</option>
+            <option value="2">Row 2</option>
+            <option value="3">Row 3</option>
+          </select>
+        </div>
+
+        <div class="col-6 col-lg-2">
+          <label class="form-label mini">Line number</label>
+          <input id="lineNumber" type="text" class="form-control" placeholder="01">
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <label class="form-label mini">Destination text</label>
+          <input id="lineDestinationData" type="text" class="form-control" placeholder="Write Line Destination">
+        </div>
+
+        <div class="col-6 col-lg-1">
+          <label class="form-label mini">Color</label>
+          <input id="rowColor" type="color" class="form-control form-control-color" value="#7ad7ff" title="Choose color">
+        </div>
+
+        <div class="col-12 col-lg-2">
+          <label class="form-label mini">Animation</label>
+          <select id="rowAnim" class="form-select">
+            <option value="none" selected>None</option>
+            <option value="pulse">Pulse</option>
+            <option value="flicker">Flicker</option>
+            <option value="glitch">Glitch</option>
+            <option value="marquee">Marquee (scroll)</option>
+            <option value="slidein">Slide-in</option>
+            <option value="typewriter">Typewriter</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1 align-items-end">
+        <div class="col-12 col-lg-3">
+          <label class="form-label mini">Auto-cycle highlighted row</label>
+          <select id="autoCycle" class="form-select">
+            <option value="off" selected>Off</option>
+            <option value="3">Every 3s</option>
+            <option value="5">Every 5s</option>
+            <option value="8">Every 8s</option>
+          </select>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <label class="form-label mini">Row marquee speed (if enabled)</label>
+          <input id="marqueeSpeed" class="form-range" type="range" min="6" max="22" value="12">
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <label class="form-label mini">Ticker speed</label>
+          <input id="tickerSpeed" class="form-range" type="range" min="8" max="30" value="18">
+        </div>
+
+        <div class="col-12 col-lg-3 d-flex gap-2">
+          <button class="btn btn-hud w-100" onclick="applyRow()">Apply row</button>
+          <button class="btn btn-hud w-100" onclick="applyStaticText()">Apply texts</button>
+        </div>
+      </div>
+
+      <div class="mini mt-3">
+        Tip: Use “Glitch” for sci-fi effect. Use “Marquee” when text is long.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Elements
+    const rows = {
+      1: { num: document.getElementById("lineNumID1"), dest: document.getElementById("lineDestID1") },
+      2: { num: document.getElementById("lineNumID2"), dest: document.getElementById("lineDestID2") },
+      3: { num: document.getElementById("lineNumID3"), dest: document.getElementById("lineDestID3") },
+    };
+
+    const rootStyle = document.documentElement.style;
+
+    // Clock
+    function tickClock(){
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      const ss = String(d.getSeconds()).padStart(2,'0');
+      document.getElementById("clock").textContent = `${hh}:${mm}:${ss}`;
+    }
+    setInterval(tickClock, 500); tickClock();
+
+    // Helpers
+    function clearAnimClasses(el){
+      el.classList.remove("anim-none","anim-pulse","anim-flicker","anim-glitch","anim-slidein","typewriter");
+      // marquee uses wrapper span
+    }
+
+    function setDestAnimation(destEl, anim){
+      // Reset
+      clearAnimClasses(destEl);
+      destEl.removeAttribute("data-text");
+
+      // Remove marquee wrapper if exists
+      if(destEl.dataset.isMarquee === "1"){
+        destEl.innerHTML = destEl.textContent; // flatten
+        delete destEl.dataset.isMarquee;
       }
-    
-    </script>
-<!--END JAVASCRIPT inputs ------------------------------------------------------------------------------------------------------------------------------------------------------------------>
-   
-    
-<!-- START ADDITIONAL BS SCRIPTS ----------------------------------------------------------------------------------------------------------------------------------------------------------->   
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>
-<!-- END ADDITIONAL BS SCRIPTS ------------------------------------------------------------------------------------------------------------------------------------------------------------->   
-  </body>
-  
+
+      if(anim === "none"){
+        destEl.classList.add("anim-none");
+      }
+      else if(anim === "pulse"){
+        destEl.classList.add("anim-pulse");
+      }
+      else if(anim === "flicker"){
+        destEl.classList.add("anim-flicker");
+      }
+      else if(anim === "glitch"){
+        destEl.classList.add("anim-glitch");
+        destEl.setAttribute("data-text", destEl.textContent);
+      }
+      else if(anim === "slidein"){
+        destEl.classList.add("anim-slidein");
+      }
+      else if(anim === "typewriter"){
+        // Make it fit: wrap in a span so width anim looks nicer
+        const text = destEl.textContent;
+        destEl.innerHTML = `<span class="typewriter d-inline-block">${escapeHtml(text)}</span>`;
+      }
+      else if(anim === "marquee"){
+        const text = destEl.textContent;
+        destEl.innerHTML = `<span class="dest-marquee">${escapeHtml(text)}</span>`;
+        destEl.dataset.isMarquee = "1";
+      }
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    // Apply row changes
+    function applyRow(){
+      const r = document.getElementById("rowSelect").value;
+      const number = document.getElementById("lineNumber").value.trim();
+      const dest = document.getElementById("lineDestinationData").value.trim();
+      const color = document.getElementById("rowColor").value;
+      const anim = document.getElementById("rowAnim").value;
+
+      if(number !== "") rows[r].num.textContent = number;
+      if(dest !== "") rows[r].dest.textContent = dest;
+
+      rows[r].num.style.color = color;
+      rows[r].dest.style.color = color;
+
+      // re-apply animation after text update
+      // (ensure glitch data-text matches new text)
+      // For typewriter/marquee we rebuild innerHTML
+      setDestAnimation(rows[r].dest, anim);
+    }
+
+    // Static texts
+    function applyStaticText(){
+      const banner = document.getElementById("bannerInput").value.trim();
+      const ticker = document.getElementById("tickerInput").value.trim();
+      const mode = document.getElementById("tickerMode").value;
+
+      if(banner !== "") document.getElementById("bannerText").textContent = banner;
+      if(ticker !== "") document.getElementById("tickerText").textContent = ticker;
+
+      const viewport = document.getElementById("tickerViewport");
+      if(mode === "marquee") viewport.classList.add("marquee");
+      else viewport.classList.remove("marquee");
+    }
+
+    // Presets
+    function applyPreset(name){
+      // Adjust CSS variables + default accent
+      if(name === "matrix"){
+        setVars({
+          "--accent":"#86ffb3",
+          "--text":"#d9ffe8",
+          "--hud-border":"rgba(134,255,179,.22)",
+          "--hud-glow":"rgba(134,255,179,.25)",
+          "--scanline":"rgba(134,255,179,.035)"
+        });
+      } else if(name === "amber"){
+        setVars({
+          "--accent":"#ffb24a",
+          "--text":"#ffe9c7",
+          "--hud-border":"rgba(255,178,74,.22)",
+          "--hud-glow":"rgba(255,178,74,.22)",
+          "--scanline":"rgba(255,178,74,.030)"
+        });
+      } else if(name === "magenta"){
+        setVars({
+          "--accent":"#d16bff",
+          "--text":"#f6dbff",
+          "--hud-border":"rgba(209,107,255,.22)",
+          "--hud-glow":"rgba(209,107,255,.22)",
+          "--scanline":"rgba(209,107,255,.032)"
+        });
+      } else { // ice
+        setVars({
+          "--accent":"#7ad7ff",
+          "--text":"#cfefff",
+          "--hud-border":"rgba(120,220,255,.22)",
+          "--hud-glow":"rgba(120,220,255,.25)",
+          "--scanline":"rgba(255,255,255,.035)"
+        });
+      }
+    }
+
+    function setVars(map){
+      for(const k in map) rootStyle.setProperty(k, map[k]);
+    }
+
+    // Sliders
+    document.getElementById("numSize").addEventListener("input", e=>{
+      rootStyle.setProperty("--num-size", e.target.value + "px");
+    });
+    document.getElementById("destSize").addEventListener("input", e=>{
+      rootStyle.setProperty("--dest-size", e.target.value + "px");
+    });
+    document.getElementById("glowStrength").addEventListener("input", e=>{
+      rootStyle.setProperty("--glow-strength", e.target.value + "px");
+    });
+    document.getElementById("marqueeSpeed").addEventListener("input", e=>{
+      rootStyle.setProperty("--marquee-speed", e.target.value + "s");
+    });
+    document.getElementById("tickerSpeed").addEventListener("input", e=>{
+      rootStyle.setProperty("--ticker-speed", e.target.value + "s");
+    });
+
+    document.getElementById("preset").addEventListener("change", e=>{
+      applyPreset(e.target.value);
+    });
+
+    // Auto-cycle highlight (simple “focus glow” on row border)
+    let cycleTimer = null;
+    let cycleIndex = 1;
+
+    function setRowFocus(idx){
+      for(const i of [1,2,3]){
+        const tr = rows[i].num.closest("tr");
+        tr.style.boxShadow = (i === idx)
+          ? "0 0 0 1px rgba(255,255,255,.05) inset, 0 0 30px rgba(122,215,255,.14)"
+          : "0 0 0 1px rgba(255,255,255,.03) inset";
+      }
+    }
+
+    document.getElementById("autoCycle").addEventListener("change", e=>{
+      const v = e.target.value;
+      if(cycleTimer) clearInterval(cycleTimer);
+      cycleTimer = null;
+
+      if(v === "off"){
+        setRowFocus(0);
+        return;
+      }
+      const seconds = parseInt(v, 10);
+      cycleIndex = 1;
+      setRowFocus(cycleIndex);
+      cycleTimer = setInterval(()=>{
+        cycleIndex = (cycleIndex % 3) + 1;
+        setRowFocus(cycleIndex);
+      }, seconds * 1000);
+    });
+
+    // Save/Load config
+    function getConfig(){
+      // Grab current display rows
+      const dataRows = {};
+      for(const i of [1,2,3]){
+        dataRows[i] = {
+          num: rows[i].num.textContent,
+          dest: rows[i].dest.textContent,
+          color: rows[i].num.style.color || "",
+          // best-effort: detect which animation is active
+          anim: detectAnim(rows[i].dest)
+        };
+      }
+      return {
+        preset: document.getElementById("preset").value,
+        numSize: document.getElementById("numSize").value,
+        destSize: document.getElementById("destSize").value,
+        glowStrength: document.getElementById("glowStrength").value,
+        marqueeSpeed: document.getElementById("marqueeSpeed").value,
+        tickerSpeed: document.getElementById("tickerSpeed").value,
+        banner: document.getElementById("bannerText").textContent,
+        ticker: document.getElementById("tickerText").textContent,
+        tickerMode: document.getElementById("tickerMode").value,
+        autoCycle: document.getElementById("autoCycle").value,
+        rows: dataRows
+      };
+    }
+
+    function detectAnim(destEl){
+      if(destEl.dataset.isMarquee === "1") return "marquee";
+      if(destEl.querySelector(".typewriter")) return "typewriter";
+      if(destEl.classList.contains("anim-pulse")) return "pulse";
+      if(destEl.classList.contains("anim-flicker")) return "flicker";
+      if(destEl.classList.contains("anim-glitch")) return "glitch";
+      if(destEl.classList.contains("anim-slidein")) return "slidein";
+      return "none";
+    }
+
+    function saveConfig(){
+      localStorage.setItem("hudConfig", JSON.stringify(getConfig()));
+    }
+
+    function loadConfig(){
+      const raw = localStorage.getItem("hudConfig");
+      if(!raw) return;
+
+      const cfg = JSON.parse(raw);
+
+      // Apply preset & sliders
+      document.getElementById("preset").value = cfg.preset;
+      applyPreset(cfg.preset);
+
+      setSlider("numSize", cfg.numSize, "--num-size", "px");
+      setSlider("destSize", cfg.destSize, "--dest-size", "px");
+      setSlider("glowStrength", cfg.glowStrength, "--glow-strength", "px");
+      setSlider("marqueeSpeed", cfg.marqueeSpeed, "--marquee-speed", "s");
+      setSlider("tickerSpeed", cfg.tickerSpeed, "--ticker-speed", "s");
+
+      // Static texts
+      document.getElementById("bannerText").textContent = cfg.banner || "";
+      document.getElementById("tickerText").textContent = cfg.ticker || "";
+      document.getElementById("tickerMode").value = cfg.tickerMode || "marquee";
+      const viewport = document.getElementById("tickerViewport");
+      if((cfg.tickerMode || "marquee") === "marquee") viewport.classList.add("marquee");
+      else viewport.classList.remove("marquee");
+
+      // Rows
+      for(const i of [1,2,3]){
+        const r = cfg.rows?.[i];
+        if(!r) continue;
+        rows[i].num.textContent = r.num ?? rows[i].num.textContent;
+        rows[i].dest.textContent = r.dest ?? rows[i].dest.textContent;
+
+        if(r.color){
+          rows[i].num.style.color = r.color;
+          rows[i].dest.style.color = r.color;
+        }
+        setDestAnimation(rows[i].dest, r.anim || "none");
+      }
+
+      // Auto-cycle
+      document.getElementById("autoCycle").value = cfg.autoCycle || "off";
+      document.getElementById("autoCycle").dispatchEvent(new Event("change"));
+    }
+
+    function setSlider(id, val, cssVar, unit){
+      if(val == null) return;
+      const el = document.getElementById(id);
+      el.value = val;
+      rootStyle.setProperty(cssVar, val + unit);
+    }
+
+    // Initialize defaults
+    applyPreset(document.getElementById("preset").value);
+    loadConfig(); // auto-load if exists
+    setRowFocus(0);
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>
