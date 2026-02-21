@@ -1,69 +1,124 @@
+<!DOCTYPE html>
 <html>
 <head>
-<title>Iframe experiments</title>
+<title>Iframe Experiments</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+    body {
+        margin: 0;
+        background: radial-gradient(circle at center, #0f2027, #0a0f1f 60%);
+        font-family: 'Orbitron', sans-serif;
+        color: #00f7ff;
+        overflow: hidden;
+    }
+
+    header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 15px 40px;
+        border-bottom: 1px solid rgba(0,255,255,0.3);
+        background: rgba(0,0,0,0.4);
+        backdrop-filter: blur(10px);
+    }
+
+    header img {
+        height: 50px;
+        filter: drop-shadow(0 0 10px #00f7ff);
+    }
+
+    h1 {
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-shadow: 0 0 10px #00f7ff;
+    }
+
+    .container {
+        padding: 40px;
+    }
+
+    .iframe-wrapper {
+        position: relative;
+        border-radius: 15px;
+        padding: 3px;
+        background: linear-gradient(135deg, #00f7ff, #0066ff, #00f7ff);
+        animation: borderGlow 5s linear infinite;
+    }
+
+    .iframe-wrapper iframe {
+        width: 100%;
+        height: 70vh;
+        border: none;
+        border-radius: 12px;
+        background: #111;
+    }
+
+    @keyframes borderGlow {
+        0% { filter: hue-rotate(0deg); }
+        100% { filter: hue-rotate(360deg); }
+    }
+
+    .subtitle {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-bottom: 15px;
+    }
+</style>
+
+<script>
+function autoRefreshEl(iframeElementID)
+{
+    const elementID = document.getElementById(iframeElementID);
+
+    setInterval(function () {
+        elementID.contentWindow.location.reload();
+    }, 3000);
+
+    setInterval(function () {           
+        setCSSstyle(elementID);            
+    }, 1000);
+}
+
+function setCSSstyle(htmlElementObject)
+{
+    const elementBody = htmlElementObject.contentDocument;
+
+    if (!elementBody) return;
+
+    const style = document.createElement("style");
+    style.innerHTML = `
+        table, th, td {
+            border: 1px solid #00f7ff;
+            color: #00f7ff;
+        }
+        table {
+            width: 100%;
+            height: 100%;
+            background: #111;
+        }
+    `;
+    elementBody.head.appendChild(style);
+}
+</script>
+
 </head>
 
 <body onload="autoRefreshEl('logElement')">
 
-<p><img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269" alt="JSmayo" width="250" height="80"><hr></p>
-  
-  <script>
-    
-    // ---------------------------------------------------------------------------------------------------------------
-    // This function is responsible for reloading iframe element
-    // Input param : iframeElementID - ID of the HTML iframe element
-    // STILL IN EXPERIMENTATION PHASIS
-    // ---------------------------------------------------------------------------------------------------------------
-      function autoRefreshEl(iframeElementID)
-        {
-          // Get HTML element reference from input parameter 
-          const elementID = document.getElementById(iframeElementID);
-          console.log(elementID);
-          
-          // Definition of CSS style
-          // let doc = elementID.contentDocument;
-          // doc.body.innerHTML= doc.body.innerHTML + '<style>  table, th, td {border: 1px solid;}  </style>';
-          setCSSstyle(elementID);
-          
-          //Refresh iframe in periodic time interval
-          setInterval(function () {
-            elementID.contentWindow.location.reload();
-            // elementID.getElementById(iframeElementID).src = document.getElementById(iframeElementID).src;
-            // elementID.onload = setCSSstyle(elementID);
-          }, 3000);
-          
-          //Set CSS in iframe for each periodic 10ms
-          setInterval(function () {           
-           setCSSstyle(elementID);            
-          }, 1000);
-        }
-    
-    // ---------------------------------------------------------------------------------------------------------------
-    // This function is responsible for updating CSS style within the HTML element object
-    // Input param : htmlElementObject - HTML element object - requierd from getElementById selector
-    // ---------------------------------------------------------------------------------------------------------------
-    function setCSSstyle(htmlElementObject)
-    {
-      const elementBody = htmlElementObject.contentDocument;
-       elementBody.body.innerHTML= elementBody.body.innerHTML + '<style>  table, th, td {border: 1px solid;} table{width: 100%; height:100%;}  </style>';
-    }
-  </script>
-  
+<header>
+    <img src="https://cdn.glitch.global/f72ae212-6431-4b90-a4d7-c9bfb3746064/jsmayo%20copy.jpg?v=1659050284269">
+    <h1>IFRAME CONTROL SYSTEM</h1>
+</header>
 
-<!--  MAIN HTML FRAME ------------------------------------------------------------------------------------------------------------------------->
-<h1 id="haha">The main HTML frame</h1>
-  
-  <p></p>
-  
-  <h2>External Iframe element</h2>
-<!-- EXTERNAL IFRAME ELEMENT ------------------------------------------------------------------------------------------------------------------>
-     <iframe id="logElement" src="iframecss.html" width="100%" height="100%" style="border-style: none;" ></iframe> 
-<!-- END OF EXTERNAL IFRAME ELEMENT ----------------------------------------------------------------------------------------------------------->
-  
-  
-<!-- END OF MAIN HTML FRAME ------------------------------------------------------------------------------------------------------------------->  
+<div class="container">
+    <div class="subtitle">Real-time Data Visualization Module</div>
+
+    <div class="iframe-wrapper">
+        <iframe id="logElement" src="iframecss.html"></iframe>
+    </div>
+</div>
+
 </body>
-</html> 
-
-
-
+</html>
