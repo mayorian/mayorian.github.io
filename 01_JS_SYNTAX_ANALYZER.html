@@ -1,0 +1,724 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NEON AST // JavaScript Syntax Analyzer</title>
+
+    <!-- CodeMirror 5 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.min.css" />
+
+    <!-- json-formatter-js -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/json-formatter-js@2.5.23/dist/json-formatter.min.css" />
+
+    <style>
+        :root {
+            --bg0: #06070d;
+            --bg1: #090b14;
+            --card: #0b0f1caa;
+            --stroke: #1e2a4a;
+            --text: #d9e3ff;
+            --muted: #93a4d4;
+            --neon: #7c5cff;
+            --neon2: #00d3ff;
+            --ok: #46f59c;
+            --warn: #ffd36a;
+            --bad: #ff5c7a;
+            --shadow: 0 24px 80px rgba(0,0,0,.55);
+            --r: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            background: radial-gradient(1200px 600px at 15% 10%, rgba(124,92,255,.22), transparent 60%), radial-gradient(900px 500px at 80% 20%, rgba(0,211,255,.18), transparent 55%), radial-gradient(900px 600px at 50% 120%, rgba(255,92,122,.10), transparent 55%), linear-gradient(180deg, var(--bg0), var(--bg1));
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        .grid {
+            height: 100%;
+            display: grid;
+            grid-template-columns: 1.1fr .9fr;
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .panel {
+            border: 1px solid rgba(30,42,74,.55);
+            background: linear-gradient(180deg, rgba(11,15,28,.72), rgba(7,10,18,.72));
+            border-radius: var(--r);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+
+            .panel::before {
+                content: "";
+                position: absolute;
+                inset: -2px;
+                background: radial-gradient(400px 200px at 20% 0%, rgba(124,92,255,.35), transparent 60%), radial-gradient(420px 220px at 90% 10%, rgba(0,211,255,.25), transparent 60%);
+                opacity: .35;
+                pointer-events: none;
+            }
+
+        header {
+            position: relative;
+            padding: 14px 14px 12px;
+            border-bottom: 1px solid rgba(30,42,74,.55);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+            .brand .title {
+                font-weight: 800;
+                letter-spacing: .12em;
+                font-size: 12px;
+                color: rgba(217,227,255,.95);
+                text-transform: uppercase;
+            }
+
+            .brand .subtitle {
+                font-size: 12px;
+                color: var(--muted);
+            }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button, select {
+            border: 1px solid rgba(30,42,74,.9);
+            background: rgba(10,14,26,.75);
+            color: var(--text);
+            padding: 9px 11px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 650;
+            letter-spacing: .02em;
+            transition: transform .08s ease, border-color .2s ease, box-shadow .2s ease;
+            outline: none;
+        }
+
+            button:hover, select:hover {
+                border-color: rgba(124,92,255,.9);
+                box-shadow: 0 0 0 3px rgba(124,92,255,.12);
+            }
+
+            button:active {
+                transform: translateY(1px);
+            }
+
+        .primary {
+            border-color: rgba(0,211,255,.75);
+            box-shadow: 0 0 24px rgba(0,211,255,.12);
+        }
+
+            .primary:hover {
+                border-color: rgba(0,211,255,1);
+                box-shadow: 0 0 0 3px rgba(0,211,255,.12), 0 0 32px rgba(0,211,255,.12);
+            }
+
+        .content {
+            position: relative;
+            height: calc(100% - 56px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-wrap {
+            flex: 1 1 auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .statusbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-top: 1px solid rgba(30,42,74,.55);
+            background: rgba(7,10,18,.45);
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(30,42,74,.7);
+            background: rgba(10,14,26,.55);
+            white-space: nowrap;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 99px;
+            background: var(--muted);
+        }
+
+            .dot.ok {
+                background: var(--ok);
+            }
+
+            .dot.bad {
+                background: var(--bad);
+            }
+
+            .dot.warn {
+                background: var(--warn);
+            }
+
+        .right {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            border-bottom: 1px solid rgba(30,42,74,.55);
+        }
+
+        .tab {
+            flex: 0 0 auto;
+            padding: 8px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(30,42,74,.7);
+            background: rgba(10,14,26,.55);
+            color: var(--muted);
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+        }
+
+            .tab.active {
+                color: var(--text);
+                border-color: rgba(124,92,255,.9);
+                box-shadow: 0 0 0 3px rgba(124,92,255,.12);
+            }
+
+        .view {
+            flex: 1 1 auto;
+            overflow: auto;
+            padding: 12px;
+        }
+
+        pre {
+            margin: 0;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid rgba(30,42,74,.6);
+            background: rgba(10,14,26,.45);
+            color: rgba(217,227,255,.92);
+            overflow: auto;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.2);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .card {
+            border: 1px solid rgba(30,42,74,.6);
+            background: rgba(10,14,26,.45);
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+            .card h3 {
+                margin: 0 0 8px;
+                font-size: 12px;
+                letter-spacing: .12em;
+                text-transform: uppercase;
+                color: rgba(217,227,255,.9);
+            }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px dashed rgba(30,42,74,.5);
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+            .metric:last-child {
+                border-bottom: 0;
+            }
+
+            .metric b {
+                color: var(--text);
+                font-weight: 800;
+            }
+
+        /* CodeMirror sizing */
+        .CodeMirror {
+            height: 100%;
+            border-radius: 14px;
+            border: 1px solid rgba(30,42,74,.6);
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.25);
+        }
+
+        /* json-formatter theme tweaks */
+        .json-formatter-row {
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .json-formatter-key {
+            color: rgba(0,211,255,.9);
+        }
+
+        .json-formatter-string {
+            color: rgba(124,92,255,.9);
+        }
+
+        .json-formatter-number {
+            color: rgba(70,245,156,.9);
+        }
+
+        .json-formatter-boolean {
+            color: rgba(255,211,106,.95);
+        }
+
+        .json-formatter-null {
+            color: rgba(255,92,122,.95);
+        }
+
+        /* Responsive */
+        @media (max-width: 980px) {
+            body {
+                overflow: auto;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .panel {
+                height: 78vh;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="grid">
+        <!-- LEFT: Editor -->
+        <section class="panel">
+            <header>
+                <div class="brand">
+                    <div class="title">NEON AST</div>
+                    <div class="subtitle">JavaScript syntax analysis / AST + metrics</div>
+                </div>
+
+                <div class="controls">
+                    <select id="ecma">
+                        <option value="2020">ECMAScript 2020</option>
+                        <option value="2022">ECMAScript 2022</option>
+                        <option value="2024" selected>ECMAScript 2024</option>
+                        <option value="latest">ECMAScript latest (Acorn)</option>
+                    </select>
+                    <button id="fmt">Insert sample</button>
+                    <button class="primary" id="analyze">Analyze</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="editor-wrap">
+                    <textarea id="code"></textarea>
+                </div>
+
+                <div class="statusbar">
+                    <div class="pill" id="parsePill">
+                        <span class="dot warn" id="parseDot"></span>
+                        <span id="parseText">Ready. Click “Analyze”.</span>
+                    </div>
+
+                    <div class="pill">
+                        <span class="dot" style="background:var(--neon2)"></span>
+                        <span id="metaText">—</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT: Output -->
+        <section class="panel right">
+            <header>
+                <div class="brand">
+                    <div class="title">OUTPUT CONSOLE</div>
+                    <div class="subtitle">Errors / AST / Metrics</div>
+                </div>
+                <div class="controls">
+                    <button id="copyAst">Copy AST JSON</button>
+                    <button id="clearOut">Clear</button>
+                </div>
+            </header>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="errors">Errors</div>
+                <div class="tab" data-tab="ast">AST Viewer</div>
+                <div class="tab" data-tab="metrics">Metrics</div>
+                <div class="tab" data-tab="raw">Raw AST</div>
+            </div>
+
+            <div class="view" id="viewErrors"></div>
+            <div class="view" id="viewAst" style="display:none"></div>
+            <div class="view" id="viewMetrics" style="display:none"></div>
+            <div class="view" id="viewRaw" style="display:none"></div>
+        </section>
+    </div>
+
+    <!-- Libs -->
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/acorn@8.11.3/dist/acorn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/acorn-walk@8.3.2/dist/walk.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/json-formatter-js@2.5.23/dist/json-formatter.umd.js"></script>
+
+    <script>
+        // ---------- Editor ----------
+        const editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+            mode: "javascript",
+            theme: "material-darker",
+            lineNumbers: true,
+            tabSize: 2,
+            indentUnit: 2,
+            indentWithTabs: false,
+            lineWrapping: false,
+            viewportMargin: Infinity
+        });
+
+        const sample = `// Welcome to NEON AST.
+// Try breaking syntax and re-running Analyze.
+
+export const clamp = (n, min = 0, max = 1) => Math.max(min, Math.min(max, n));
+
+class Reactor {
+      #power = 42;
+      constructor(label) { this.label = label; }
+      ignite(mult = 2) {
+        const amp = clamp(this.#power / 100, 0, 1);
+        return { label: this.label, amp, output: amp * mult };
+      }
+}
+
+const r = new Reactor("SYN-9");
+console.log(r.ignite(3));
+`;
+
+        editor.setValue(sample);
+
+        // ---------- UI helpers ----------
+        const parseDot = document.getElementById('parseDot');
+        const parseText = document.getElementById('parseText');
+        const metaText = document.getElementById('metaText');
+
+        const viewErrors = document.getElementById('viewErrors');
+        const viewAst = document.getElementById('viewAst');
+        const viewMetrics = document.getElementById('viewMetrics');
+        const viewRaw = document.getElementById('viewRaw');
+
+        const tabs = [...document.querySelectorAll('.tab')];
+        tabs.forEach(t => t.addEventListener('click', () => {
+            tabs.forEach(x => x.classList.remove('active'));
+            t.classList.add('active');
+            const name = t.dataset.tab;
+
+            viewErrors.style.display = name === 'errors' ? '' : 'none';
+            viewAst.style.display = name === 'ast' ? '' : 'none';
+            viewMetrics.style.display = name === 'metrics' ? '' : 'none';
+            viewRaw.style.display = name === 'raw' ? '' : 'none';
+        }));
+
+        function setStatus(kind, msg) {
+            parseDot.className = 'dot ' + (kind || '');
+            parseText.textContent = msg;
+        }
+
+        function clearViews() {
+            viewErrors.innerHTML = '';
+            viewAst.innerHTML = '';
+            viewMetrics.innerHTML = '';
+            viewRaw.innerHTML = '';
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        // ---------- Analysis ----------
+        function ecmaVersionValue() {
+            const v = document.getElementById('ecma').value;
+            return v === 'latest' ? 'latest' : Number(v);
+        }
+
+        function analyze() {
+            const code = editor.getValue();
+            clearViews();
+
+            const t0 = performance.now();
+            let ast;
+
+            try {
+                ast = acorn.parse(code, {
+                    ecmaVersion: ecmaVersionValue(),
+                    sourceType: "module",
+                    locations: true,
+                    ranges: true,
+                    allowHashBang: true
+                });
+
+                const ms = (performance.now() - t0).toFixed(2);
+                setStatus('ok', `Parse OK • ${ms}ms`);
+                metaText.textContent = `${code.length.toLocaleString()} chars • ${code.split(/\r?\n/).length.toLocaleString()} lines`;
+
+                // Errors tab
+                viewErrors.innerHTML = `
+              <div class="card">
+                <h3>Status</h3>
+                <div class="metric"><span>Parser</span><b>Acorn</b></div>
+                <div class="metric"><span>Result</span><b style="color:var(--ok)">No syntax errors</b></div>
+              </div>
+            `;
+
+            } catch (e) {
+                setStatus('bad', 'Parse FAILED • syntax error detected');
+                metaText.textContent = `${code.length.toLocaleString()} chars • ${code.split(/\r?\n/).length.toLocaleString()} lines`;
+
+                const loc = e.loc ? `Line ${e.loc.line}, Col ${e.loc.column}` : 'Unknown location';
+                viewErrors.innerHTML = `
+              <div class="card">
+                <h3>Syntax Error</h3>
+                <pre>${escapeHtml(String(e.message))}\n${escapeHtml(loc)}</pre>
+              </div>
+              <div class="card" style="margin-top:10px">
+                <h3>Tip</h3>
+                <div style="color:var(--muted); font-size:12px; line-height:1.55">
+                  Fix the code near the location above. Then re-run <b>Analyze</b>.
+                </div>
+              </div>
+            `;
+                // still show partial info
+                viewRaw.innerHTML = `<pre>{ "error": ${escapeHtml(JSON.stringify(String(e.message)))} }</pre>`;
+                return;
+            }
+
+            // AST Viewer tab (collapsible)
+            const formatter = new JSONFormatter(ast, 2, { hoverPreviewEnabled: true });
+            viewAst.appendChild(formatter.render());
+
+            // Raw tab
+            viewRaw.innerHTML = `<pre>${escapeHtml(JSON.stringify(ast, null, 2))}</pre>`;
+
+            // Metrics tab
+            const metrics = computeMetrics(ast);
+            viewMetrics.innerHTML = renderMetrics(metrics);
+        }
+
+        function computeMetrics(ast) {
+            const m = {
+                nodes: 0,
+                statements: 0,
+                expressions: 0,
+                functions: 0,
+                asyncFunctions: 0,
+                generatorFunctions: 0,
+                arrowFunctions: 0,
+                classes: 0,
+                imports: 0,
+                exports: 0,
+                loops: 0,
+                conditionals: 0,
+                tryCatch: 0,
+                identifiers: 0,
+                literals: 0,
+                memberExpressions: 0,
+                calls: 0,
+                declares: 0
+            };
+
+            walk.full(ast, (node) => {
+                m.nodes++;
+
+                // rough categorization
+                if (node.type.endsWith("Statement")) m.statements++;
+                if (node.type.endsWith("Expression")) m.expressions++;
+
+                switch (node.type) {
+                    case "FunctionDeclaration":
+                    case "FunctionExpression":
+                        m.functions++;
+                        if (node.async) m.asyncFunctions++;
+                        if (node.generator) m.generatorFunctions++;
+                        break;
+                    case "ArrowFunctionExpression":
+                        m.functions++;
+                        m.arrowFunctions++;
+                        if (node.async) m.asyncFunctions++;
+                        break;
+                    case "ClassDeclaration":
+                    case "ClassExpression":
+                        m.classes++;
+                        break;
+                    case "ImportDeclaration":
+                        m.imports++;
+                        break;
+                    case "ExportNamedDeclaration":
+                    case "ExportDefaultDeclaration":
+                    case "ExportAllDeclaration":
+                        m.exports++;
+                        break;
+                    case "ForStatement":
+                    case "ForInStatement":
+                    case "ForOfStatement":
+                    case "WhileStatement":
+                    case "DoWhileStatement":
+                        m.loops++;
+                        break;
+                    case "IfStatement":
+                    case "SwitchStatement":
+                    case "ConditionalExpression":
+                        m.conditionals++;
+                        break;
+                    case "TryStatement":
+                        m.tryCatch++;
+                        break;
+                    case "Identifier":
+                        m.identifiers++;
+                        break;
+                    case "Literal":
+                        m.literals++;
+                        break;
+                    case "MemberExpression":
+                        m.memberExpressions++;
+                        break;
+                    case "CallExpression":
+                        m.calls++;
+                        break;
+                    case "VariableDeclarator":
+                        m.declares++;
+                        break;
+                }
+            });
+
+            return m;
+        }
+
+        function renderMetrics(m) {
+            const left = [
+                ["Total nodes", m.nodes],
+                ["Statements", m.statements],
+                ["Expressions", m.expressions],
+                ["Identifiers", m.identifiers],
+                ["Literals", m.literals],
+            ];
+            const right = [
+                ["Functions (total)", m.functions],
+                ["Arrow functions", m.arrowFunctions],
+                ["Async functions", m.asyncFunctions],
+                ["Generator functions", m.generatorFunctions],
+                ["Classes", m.classes],
+            ];
+            const third = [
+                ["Imports", m.imports],
+                ["Exports", m.exports],
+                ["Loops", m.loops],
+                ["Conditionals", m.conditionals],
+                ["Try/Catch blocks", m.tryCatch],
+            ];
+            const fourth = [
+                ["Call expressions", m.calls],
+                ["Member expressions", m.memberExpressions],
+                ["Variable declarators", m.declares],
+            ];
+
+            function card(title, rows) {
+                return `
+              <div class="card">
+                <h3>${title}</h3>
+                ${rows.map(([k, v]) => `<div class="metric"><span>${k}</span><b>${Number(v).toLocaleString()}</b></div>`).join("")}
+              </div>
+            `;
+            }
+
+            return `
+            <div class="kv">
+              ${card("Core", left)}
+              ${card("Functions & Types", right)}
+              ${card("Flow", third)}
+              ${card("Operations", fourth)}
+            </div>
+          `;
+        }
+
+        // ---------- Buttons ----------
+        document.getElementById('analyze').addEventListener('click', analyze);
+
+        document.getElementById('fmt').addEventListener('click', () => {
+            editor.setValue(sample);
+            setStatus('warn', 'Sample inserted. Click “Analyze”.');
+        });
+
+        document.getElementById('clearOut').addEventListener('click', () => {
+            clearViews();
+            setStatus('warn', 'Output cleared.');
+            metaText.textContent = '—';
+        });
+
+        document.getElementById('copyAst').addEventListener('click', async () => {
+            const raw = viewRaw.querySelector('pre')?.innerText || '';
+            if (!raw) { setStatus('warn', 'Nothing to copy yet. Run Analyze.'); return; }
+            try {
+                await navigator.clipboard.writeText(raw);
+                setStatus('ok', 'AST JSON copied to clipboard.');
+            } catch {
+                setStatus('warn', 'Clipboard blocked by browser. Copy from Raw AST tab.');
+            }
+        });
+
+        // Run initial analysis
+        analyze();
+    </script>
+</body>
+</html>
