@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Prompt Validator Tool</title>
+
+  <!-- CodeMirror 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/scroll/simplescrollbars.css">
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/mode/simple.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/scroll/simplescrollbars.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Optional token counting -->
+  <script src="https://cdn.jsdelivr.net/npm/gpt-3-encoder@1.1.4/Encoder.js"></script>
+
+  <style>
+    :root{
+      --bg0:#070A12;
+      --bg1:#0B1020;
+      --card: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+
+      --high:#ff3b3b;   /* red */
+      --med:#ff9f1a;    /* orange */
+      --low:#3aa6ff;    /* blue */
+
+      --good:#35d07f;
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background: radial-gradient(1200px 800px at 20% 20%, #12204c 0%, transparent 55%),
+                  radial-gradient(1000px 700px at 80% 30%, #3a1051 0%, transparent 55%),
+                  radial-gradient(900px 650px at 50% 90%, #0f4a3b 0%, transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    .sheen{
+      position:fixed; inset:-40%;
+      background: conic-gradient(from 180deg at 50% 50%,
+        rgba(255,59,59,.12),
+        rgba(58,166,255,.12),
+        rgba(255,159,26,.12),
+        rgba(53,208,127,.10),
+        rgba(255,59,59,.12)
+      );
+      filter: blur(60px);
+      opacity:.35;
+      animation: spin 16s linear infinite;
+      pointer-events:none;
+      z-index:0;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+
+    #fx{
+      position:fixed; inset:0;
+      z-index:0;
+      pointer-events:none;
+      opacity:.65;
+    }
+
+    .wrap{
+      position:relative;
+      z-index:1;
+      max-width: 1200px;
+      margin: 26px auto;
+      padding: 18px;
+    }
+
+    header{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:14px;
+    }
+    .title{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .title h1{
+      margin:0;
+      font-size: 22px;
+      letter-spacing:.4px;
+      font-weight: 760;
+    }
+    .title .sub{
+      margin:0;
+      color:var(--muted);
+      font-size: 13px;
+    }
+
+    .pillrow{
+      display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    .pill{
+      padding:8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 6px 20px rgba(0,0,0,.25);
+      font-size: 12px;
+      color: var(--muted);
+      display:flex; gap:8px; align-items:center;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:50%;
+      background: var(--good);
+      box-shadow: 0 0 16px rgba(53,208,127,.6);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.3fr .7fr;
+      gap: 14px;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .cardhead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), transparent);
+    }
+    .cardhead .left{
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .cardhead h2{
+      margin:0;
+      font-size: 14px;
+      font-weight: 720;
+      letter-spacing:.3px;
+    }
+    .cardhead .hint{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .btnrow{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    button{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.07);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 650;
+      letter-spacing:.2px;
+      transition: transform .08s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    button:hover{
+      background: rgba(255,255,255,.11);
+      border-color: rgba(255,255,255,.22);
+    }
+    button:active{ transform: translateY(1px) scale(.99); }
+    .primary{
+      background: linear-gradient(135deg, rgba(58,166,255,.22), rgba(255,59,59,.18));
+      border-color: rgba(58,166,255,.35);
+    }
+    .danger{
+      background: rgba(255,59,59,.14);
+      border-color: rgba(255,59,59,.35);
+    }
+
+    .editorShell{
+      position:relative;
+      padding: 12px 12px 14px 12px;
+    }
+    .resizable{
+      resize: vertical;
+      overflow: hidden;
+      min-height: 220px;
+      height: 420px;
+      max-height: 72vh;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .CodeMirror{
+      height:100%;
+      font-size: 13.5px;
+      line-height: 1.55;
+      background: transparent;
+      color: var(--text);
+    }
+    .CodeMirror-gutters{
+      background: rgba(255,255,255,.04);
+      border-right: 1px solid rgba(255,255,255,.08);
+    }
+    .CodeMirror-linenumber{ color: rgba(255,255,255,.38); }
+    .CodeMirror-cursor{ border-left: 2px solid rgba(255,255,255,.75); }
+
+    .cm-highImpact{
+      color: var(--high);
+      font-weight: 800;
+      text-shadow: 0 0 14px rgba(255,59,59,.35);
+    }
+    .cm-mediumImpact{
+      color: var(--med);
+      font-weight: 800;
+      text-shadow: 0 0 14px rgba(255,159,26,.28);
+    }
+    .cm-lowImpact{
+      color: var(--low);
+      font-weight: 800;
+      text-shadow: 0 0 14px rgba(58,166,255,.28);
+    }
+
+    .legend{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      padding: 0 14px 14px 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .chip{
+      display:flex; align-items:center; gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .swatch{ width:10px; height:10px; border-radius:3px; }
+    .swatch.high{ background: var(--high); }
+    .swatch.med{ background: var(--med); }
+    .swatch.low{ background: var(--low); }
+
+    .stats{
+      padding: 12px 14px 14px 14px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .kpis{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .kpi{
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding: 10px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-height: 74px;
+    }
+    .kpi .label{ font-size: 12px; color: var(--muted); }
+    .kpi .val{ font-size: 18px; font-weight: 820; letter-spacing:.2px; }
+
+    .charts{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .chartCard{
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    .chartTitle{
+      width:100%;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 8px 0;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .badge{
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.72);
+      white-space:nowrap;
+    }
+
+    /* Smaller Graphs (30%) */
+    .chartWrap{
+      width: 30%;
+      min-width: 160px;
+      max-width: 260px;
+      height: 160px;
+      margin: 6px auto 2px auto;
+      position: relative;
+    }
+    .chartWrap canvas{
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .toast{
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 14px 50px rgba(0,0,0,.5);
+      color: var(--text);
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 5;
+      pointer-events:none;
+    }
+    .toast.show{
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .pulse{
+      animation: pulse .55s ease;
+    }
+    @keyframes pulse{
+      0%{ box-shadow: inset 0 0 0 0 rgba(58,166,255,.0), 0 0 0 rgba(0,0,0,0); }
+      50%{ box-shadow: inset 0 0 0 1px rgba(58,166,255,.25), 0 0 22px rgba(58,166,255,.18); }
+      100%{ box-shadow: inset 0 0 0 0 rgba(58,166,255,.0), 0 0 0 rgba(0,0,0,0); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="sheen"></div>
+  <canvas id="fx"></canvas>
+
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>Prompt Validator Tool</h1>
+        <p class="sub">Realtime validation • impact analytics • clarity score • tokens • charts</p>
+      </div>
+      <div class="pillrow">
+        <div class="pill"><span class="dot"></span><span id="modeLabel">Realtime validation: ON</span></div>
+        <div class="pill"><span style="opacity:.8">Tip:</span> resize the prompt window from the bottom edge</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="cardhead">
+          <div class="left">
+            <h2>Prompt</h2>
+            <div class="hint">Type or paste your prompt here to get started</div>
+          </div>
+          <div class="btnrow">
+            <button class="primary" id="btnValidate">Validate</button>
+            <button id="btnCopy">Copy</button>
+            <button class="danger" id="btnClear">Clear</button>
+          </div>
+        </div>
+
+        <div class="editorShell">
+          <div id="resizable" class="resizable">
+            <textarea id="prompt"></textarea>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="chip"><span class="swatch high"></span> HIGH_IMPACT</span>
+          <span class="chip"><span class="swatch med"></span> MEDIUM_IMPACT</span>
+          <span class="chip"><span class="swatch low"></span> LOW_IMPACT</span>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="cardhead">
+          <div class="left">
+            <h2>Statistics</h2>
+            <div class="hint">Impact counts + length + tokenization + clarity model</div>
+          </div>
+          <div class="btnrow">
+            <button id="btnToggleRealtime" title="Toggle realtime validation">Realtime: ON</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="label">Characters</div>
+              <div class="val" id="kChars">0</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Words</div>
+              <div class="val" id="kWords">0</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Tokens</div>
+              <div class="val" id="kTokens">0</div>
+            </div>
+          </div>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="label">HIGH_IMPACT found</div>
+              <div class="val" id="kHigh" style="color:var(--high)">0</div>
+            </div>
+            <div class="kpi">
+              <div class="label">MEDIUM_IMPACT found</div>
+              <div class="val" id="kMed" style="color:var(--med)">0</div>
+            </div>
+            <div class="kpi">
+              <div class="label">LOW_IMPACT found</div>
+              <div class="val" id="kLow" style="color:var(--low)">0</div>
+            </div>
+          </div>
+
+          <div class="charts">
+            <div class="chartCard">
+              <div class="chartTitle">
+                <span>Impact Distribution</span>
+                <span class="badge" id="impactBadge">0 flagged words</span>
+              </div>
+              <div class="chartWrap">
+                <canvas id="chartImpact"></canvas>
+              </div>
+            </div>
+
+            <div class="chartCard">
+              <div class="chartTitle">
+                <span>Prompt Clarity</span>
+                <span class="badge" id="clarityBadge">0%</span>
+              </div>
+              <div class="chartWrap">
+                <canvas id="chartClarity"></canvas>
+              </div>
+            </div>
+
+            <div class="chartCard">
+              <div class="chartTitle">
+                <span>Length Mix</span>
+                <span class="badge" id="lenBadge">chars / words / tokens</span>
+              </div>
+              <div class="chartWrap">
+                <canvas id="chartLen"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- word lists -->
+  <script src="https://cdn.jsdelivr.net/gh/mayorian/tooling@main/prompt_validator/data.js"></script>
+
+  <script>
+    /*************************************************
+     * 0) Central color system (THIS fixes your issue)
+     *************************************************/
+    const CSS = getComputedStyle(document.documentElement);
+    const COLORS = {
+      impact: {
+        high: CSS.getPropertyValue("--high").trim() || "#ff3b3b",
+        med:  CSS.getPropertyValue("--med").trim()  || "#ff9f1a",
+        low:  CSS.getPropertyValue("--low").trim()  || "#3aa6ff",
+      },
+      gray: {
+        g0: "#111418",
+        g1: "#2a2f36",
+        g2: "#424a55",
+        g3: "#5a6472",
+        g4: "#7a8596",
+        g5: "#a3adbb",
+      }
+    };
+
+    function applyDatasetColors(chart, colors){
+      // colors can be [c1,c2,c3...] or a single color
+      const ds = chart.data.datasets[0];
+      ds.backgroundColor = Array.isArray(colors) ? colors : colors;
+      ds.borderColor = "rgba(255,255,255,.16)";
+      ds.borderWidth = 1;
+    }
+
+    /*************************************************
+     * 1) Helpers: regex building, counting, tokenizing
+     *************************************************/
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    function buildWordRegex(words){
+      const cleaned = (words || [])
+        .map(w => (w || "").trim())
+        .filter(Boolean)
+        .sort((a,b) => b.length - a.length)
+        .map(escapeRegExp);
+      if(!cleaned.length) return null;
+      return new RegExp("\\b(?:(" + cleaned.join("|") + "))\\b", "gi");
+    }
+
+    const RX_HIGH = buildWordRegex(HIGH_IMPACT);
+    const RX_MED  = buildWordRegex(MEDIUM_IMPACT);
+    const RX_LOW  = buildWordRegex(LOW_IMPACT);
+
+    function countMatches(text, rx){
+      if(!rx) return 0;
+      rx.lastIndex = 0;
+      let c = 0;
+      while(rx.exec(text)) c++;
+      return c;
+    }
+
+    function wordCount(text){
+      const m = text.trim().match(/\S+/g);
+      return m ? m.length : 0;
+    }
+
+    function tokenCount(text){
+      try{
+        if(typeof encode === "function"){
+          return encode(text).length;
+        }
+      }catch(e){}
+      return Math.max(0, Math.ceil(text.length / 4));
+    }
+
+    /*************************************************
+     * 2) Prompt clarity model
+     *************************************************/
+    function clarityScore({ chars, words, high, med, low }){
+      const weighted = high*6 + med*3 + low*1;
+      const norm = Math.sqrt((words || 0) + 1);
+      let score = 100 - (weighted * 8) / norm;
+      if(words <= 5 && chars > 0) score -= 12;
+      score = Math.max(0, Math.min(100, score));
+      return Math.round(score);
+    }
+
+    /*************************************************
+     * 3) CodeMirror overlay highlighting
+     *************************************************/
+    function impactOverlay(){
+      return {
+        token: function(stream){
+          const rest = stream.string.slice(stream.pos);
+
+          const check = (rx) => {
+            if(!rx) return null;
+            rx.lastIndex = 0;
+            const m = rx.exec(rest);
+            if(m && m.index === 0) return m[0];
+            return null;
+          };
+
+          const mh = check(RX_HIGH);
+          if(mh){ stream.pos += mh.length; return "highImpact"; }
+
+          const mm = check(RX_MED);
+          if(mm){ stream.pos += mm.length; return "mediumImpact"; }
+
+          const ml = check(RX_LOW);
+          if(ml){ stream.pos += ml.length; return "lowImpact"; }
+
+          stream.next();
+          return null;
+        }
+      };
+    }
+
+    const cm = CodeMirror.fromTextArea(document.getElementById("prompt"), {
+      lineNumbers: true,
+      lineWrapping: true,
+      scrollbarStyle: "simple",
+      viewportMargin: Infinity,
+      theme: "default"
+    });
+
+    cm.addOverlay(impactOverlay());
+
+    const resizable = document.getElementById("resizable");
+    const ro = new ResizeObserver(() => cm.setSize(null, resizable.clientHeight));
+    ro.observe(resizable);
+    cm.setSize(null, resizable.clientHeight);
+
+    /*************************************************
+     * 4) Chart defaults + consistent legend/tooltip
+     *************************************************/
+    Chart.defaults.color = "rgba(255,255,255,.78)";
+    Chart.defaults.borderColor = "rgba(255,255,255,.14)";
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    Chart.defaults.font.size = 11;
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            usePointStyle: true,
+            boxWidth: 12,
+            font: { size: 10 }
+          }
+        },
+        tooltip: {
+          enabled: true,
+          callbacks: {
+            label: (ctx) => {
+              const label = ctx.label ?? "";
+              const val = ctx.parsed ?? 0;
+              return `${label}: ${val.toLocaleString()}`;
+            }
+          }
+        }
+      }
+    };
+
+    /*************************************************
+     * 5) Charts with explicit palettes (fix)
+     *************************************************/
+    const impactChart = new Chart(document.getElementById("chartImpact"), {
+      type: "pie",
+      data: {
+        labels: ["HIGH_IMPACT", "MEDIUM_IMPACT", "LOW_IMPACT"],
+        datasets: [{ data: [0,0,0] }]
+      },
+      options: commonOptions
+    });
+    applyDatasetColors(impactChart, [
+      COLORS.impact.high,
+      COLORS.impact.med,
+      COLORS.impact.low
+    ]);
+
+    const clarityChart = new Chart(document.getElementById("chartClarity"), {
+      type: "doughnut",
+      data: {
+        labels: ["Clarity", "Penalty"],
+        datasets: [{ data: [100,0], cutout: "70%" }]
+      },
+      options: commonOptions
+    });
+    // Greyscale only
+    applyDatasetColors(clarityChart, [
+      COLORS.gray.g5, // clarity (lighter)
+      COLORS.gray.g1  // penalty (darker)
+    ]);
+
+    const lenChart = new Chart(document.getElementById("chartLen"), {
+      type: "pie",
+      data: {
+        labels: ["Characters", "Words", "Tokens"],
+        datasets: [{ data: [0,0,0] }]
+      },
+      options: commonOptions
+    });
+    // Greyscale (keeps UI consistent; change if you want colors)
+    applyDatasetColors(lenChart, [
+      COLORS.gray.g2,
+      COLORS.gray.g4,
+      COLORS.gray.g5
+    ]);
+
+    // Important: after styling datasets, update once
+    impactChart.update();
+    clarityChart.update();
+    lenChart.update();
+
+    /*************************************************
+     * 6) Realtime validation + UI actions
+     *************************************************/
+    const $ = (id) => document.getElementById(id);
+
+    const toast = $("toast");
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove("show"), 1200);
+    }
+
+    let realtime = true;
+    function setRealtime(on){
+      realtime = !!on;
+      $("btnToggleRealtime").textContent = `Realtime: ${realtime ? "ON" : "OFF"}`;
+      $("modeLabel").textContent = `Realtime validation: ${realtime ? "ON" : "OFF"}`;
+      if(realtime) validateNow();
+    }
+
+    function validateNow(){
+      const text = cm.getValue();
+
+      const chars = text.length;
+      const words = wordCount(text);
+      const tokens = tokenCount(text);
+
+      const high = countMatches(text, RX_HIGH);
+      const med  = countMatches(text, RX_MED);
+      const low  = countMatches(text, RX_LOW);
+
+      const clarity = clarityScore({ chars, words, high, med, low });
+
+      $("kChars").textContent  = chars.toLocaleString();
+      $("kWords").textContent  = words.toLocaleString();
+      $("kTokens").textContent = tokens.toLocaleString();
+
+      $("kHigh").textContent = high.toLocaleString();
+      $("kMed").textContent  = med.toLocaleString();
+      $("kLow").textContent  = low.toLocaleString();
+
+      const flagged = high + med + low;
+      $("impactBadge").textContent = `${flagged.toLocaleString()} flagged word${flagged === 1 ? "" : "s"}`;
+      $("clarityBadge").textContent = `${clarity}%`;
+
+      impactChart.data.datasets[0].data = [high, med, low];
+      impactChart.update();
+
+      clarityChart.data.datasets[0].data = [clarity, 100-clarity];
+      clarityChart.update();
+
+      lenChart.data.datasets[0].data = [chars, words, tokens];
+      lenChart.update();
+
+      resizable.classList.remove("pulse");
+      void resizable.offsetWidth;
+      resizable.classList.add("pulse");
+    }
+
+    let debT = null;
+    cm.on("change", () => {
+      if(!realtime) return;
+      clearTimeout(debT);
+      debT = setTimeout(validateNow, 90);
+    });
+
+    $("btnValidate").addEventListener("click", () => {
+      validateNow();
+      showToast("Validated ✓");
+    });
+
+    $("btnCopy").addEventListener("click", async () => {
+      try{
+        await navigator.clipboard.writeText(cm.getValue());
+        showToast("Copied to clipboard");
+      }catch(e){
+        const ta = document.createElement("textarea");
+        ta.value = cm.getValue();
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+        showToast("Copied (fallback)");
+      }
+    });
+
+    $("btnClear").addEventListener("click", () => {
+      cm.setValue("");
+      validateNow();
+      showToast("Cleared");
+    });
+
+    $("btnToggleRealtime").addEventListener("click", () => {
+      setRealtime(!realtime);
+      showToast(`Realtime ${realtime ? "ON" : "OFF"}`);
+    });
+
+    validateNow();
+
+    /*************************************************
+     * 7) Futuristic particles
+     *************************************************/
+    const canvas = document.getElementById("fx");
+    const c = canvas.getContext("2d");
+    let W=0,H=0,parts=[];
+    function resizeFx(){
+      W = canvas.width = window.innerWidth * devicePixelRatio;
+      H = canvas.height = window.innerHeight * devicePixelRatio;
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+    }
+    window.addEventListener("resize", resizeFx);
+    resizeFx();
+
+    function seed(){
+      parts = [];
+      const n = Math.min(120, Math.floor((window.innerWidth*window.innerHeight)/14000));
+      for(let i=0;i<n;i++){
+        parts.push({
+          x: Math.random()*W,
+          y: Math.random()*H,
+          vx:(Math.random()-.5)*.22*devicePixelRatio,
+          vy:(Math.random()-.5)*.22*devicePixelRatio,
+          r:(Math.random()*1.6+0.6)*devicePixelRatio,
+          a: Math.random()*0.6+0.15
+        });
+      }
+    }
+    seed();
+
+    function loop(){
+      c.clearRect(0,0,W,H);
+
+      for(let i=0;i<parts.length;i++){
+        const p = parts[i];
+        p.x += p.vx; p.y += p.vy;
+        if(p.x<0||p.x>W) p.vx*=-1;
+        if(p.y<0||p.y>H) p.vy*=-1;
+
+        c.globalAlpha = p.a;
+        c.beginPath();
+        c.arc(p.x,p.y,p.r,0,Math.PI*2);
+        c.fillStyle = "white";
+        c.fill();
+
+        for(let j=i+1;j<parts.length;j++){
+          const q = parts[j];
+          const dx=p.x-q.x, dy=p.y-q.y;
+          const d = Math.sqrt(dx*dx+dy*dy);
+          if(d < 170*devicePixelRatio){
+            c.globalAlpha = Math.max(0, (1 - d/(170*devicePixelRatio)) * 0.10);
+            c.beginPath();
+            c.moveTo(p.x,p.y);
+            c.lineTo(q.x,q.y);
+            c.strokeStyle = "white";
+            c.lineWidth = 1*devicePixelRatio;
+            c.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>
