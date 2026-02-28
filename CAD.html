@@ -72,7 +72,22 @@
               white-space: nowrap;
           }
 
-      /* L2 header */
+      /* L2 Info header */
+      .l2_Info_header {
+          background: #8ae4ff;
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 12px 14px;
+          border-radius: var(--radius);
+          margin-bottom: 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          box-shadow: var(--shadow-sm);
+      }
+
+     /* L2 header */
       .l2_header {
           background: #ffffff;
           border: 1px solid var(--border);
@@ -320,7 +335,7 @@
             </div>
         </div>
 
-        <div class="l2_header">
+        <div class="l2_Info_header">
             <b> Other CAD Exams  </b>
             <button onclick="window.location.href='CADpractice.html'" type="button">CAD Practice - Questions</button>
             <button onclick="window.location.href='https://www.dumpspedia.com/cad-certified-application-developer-servicenow-dumps.html'" type="button">ServiceNow CAD Dumps</button>
