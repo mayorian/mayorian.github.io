@@ -4621,5 +4621,324 @@ var questionsBankArray = [
       "d": "No fields"
     },
     "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What are the three main components evaluated in an ACL rule?",
+    "answers": {
+      "a": "Table, Script, Condition",
+      "b": "Role, Condition, Script",
+      "c": "Table, Role, Field",
+      "d": "User, Group, Script"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Which ACL type controls access to individual fields on a record?",
+    "answers": {
+      "a": "table.*",
+      "b": "table.field",
+      "c": "*.field",
+      "d": "table.none"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "If multiple ACL rules apply to the same operation, how does ServiceNow evaluate them?",
+    "answers": {
+      "a": "All must evaluate to true",
+      "b": "First true rule grants access",
+      "c": "Most specific rule is evaluated first",
+      "d": "Role-based rules override script rules"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What happens if no ACL rule exists for a table?",
+    "answers": {
+      "a": "Access is denied",
+      "b": "Access is granted",
+      "c": "Only admin can access",
+      "d": "Only read is allowed"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Which role can elevate privileges to modify high-security ACLs?",
+    "answers": {
+      "a": "itil_admin",
+      "b": "security_admin",
+      "c": "admin",
+      "d": "sn_developer"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Which ACL is evaluated first?",
+    "answers": {
+      "a": "table.*",
+      "b": "*.field",
+      "c": "table.field",
+      "d": "*.*"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "In an ACL script, which object refers to the current record?",
+    "answers": {
+      "a": "producer",
+      "b": "current",
+      "c": "g_form",
+      "d": "record"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "For a user to pass an ACL, which conditions must evaluate to true?",
+    "answers": {
+      "a": "Role OR Condition OR Script",
+      "b": "Role AND Condition AND Script",
+      "c": "Script only",
+      "d": "Condition only"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Which operation allows inserting new records into a table?",
+    "answers": {
+      "a": "read",
+      "b": "write",
+      "c": "create",
+      "d": "insert"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is the recommended way to test ACL behavior as another user?",
+    "answers": {
+      "a": "Modify sys_user table",
+      "b": "Use impersonation",
+      "c": "Change role hierarchy",
+      "d": "Run Background Script"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "How do field-level ACLs interact with table-level ACLs?",
+    "answers": {
+      "a": "They override table-level ACLs",
+      "b": "They are ignored if table ACL exists",
+      "c": "They are evaluated after table-level ACLs",
+      "d": "They replace table-level ACLs"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "If a table extends another table, how are ACLs handled?",
+    "answers": {
+      "a": "Child table ignores parent ACLs",
+      "b": "Child table inherits parent ACLs",
+      "c": "Parent inherits child ACLs",
+      "d": "ACLs must be recreated manually"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is the purpose of a wildcard (*) ACL?",
+    "answers": {
+      "a": "Grant all access",
+      "b": "Apply rule to all tables or fields",
+      "c": "Deny admin access",
+      "d": "Run global script only"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "If an ACL script returns false, what is the result?",
+    "answers": {
+      "a": "Next ACL is evaluated",
+      "b": "Access is granted",
+      "c": "Access is denied",
+      "d": "Role check is skipped"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Which approach improves ACL performance?",
+    "answers": {
+      "a": "Use scripts for all checks",
+      "b": "Use conditions instead of scripts when possible",
+      "c": "Disable inheritance",
+      "d": "Grant admin role broadly"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Which tool helps analyze ACL evaluation in real time?",
+    "answers": {
+      "a": "Script Debugger",
+      "b": "Debug Security Rules",
+      "c": "Background Scripts",
+      "d": "Debug Business Rule"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is the difference between write and create ACL operations?",
+    "answers": {
+      "a": "No difference",
+      "b": "Write modifies existing records; create inserts new records",
+      "c": "Create modifies existing records",
+      "d": "Write deletes records"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What does the Requires role field in an ACL enforce?",
+    "answers": {
+      "a": "User must have all listed roles",
+      "b": "User must have at least one listed role",
+      "c": "User must be admin",
+      "d": "User must belong to a specific group"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What happens if a user passes the table ACL but fails the field ACL?",
+    "answers": {
+      "a": "User can access the field",
+      "b": "User can access the record but not the field",
+      "c": "User cannot access the table at all",
+      "d": "System grants read-only access"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Which ACL rule is considered most specific?",
+    "answers": {
+      "a": "*.field",
+      "b": "table.*",
+      "c": "table.field",
+      "d": "*.*"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is an Access Control List (ACL) in ServiceNow?",
+    "answers": {
+      "a": "A UI policy that controls field visibility on forms",
+      "b": "A security rule that controls access to tables, records, and fields",
+      "c": "A workflow that manages approvals",
+      "d": "A client-side script for validation"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "How are ACLs evaluated in ServiceNow?",
+    "answers": {
+      "a": "Least specific rule is evaluated first",
+      "b": "Most specific rule is evaluated first",
+      "c": "Random rule is evaluated",
+      "d": "Only role-based rules are evaluated"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Does an ACL record contain a field named 'Order' to control evaluation priority?",
+    "answers": {
+      "a": "Yes, and lower order runs first",
+      "b": "Yes, and higher order runs first",
+      "c": "No, ACLs do not contain an Order field",
+      "d": "Only for field-level ACLs"
+    },
+    "rightAnswers": "c"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is a role-level ACL?",
+    "answers": {
+      "a": "An ACL that grants access based only on user roles",
+      "b": "An ACL that controls role assignment",
+      "c": "An ACL that applies only to admin users",
+      "d": "An ACL that ignores conditions and scripts"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is a column-level ACL?",
+    "answers": {
+      "a": "An ACL applied to an entire table",
+      "b": "An ACL applied to a specific field (column) in a table",
+      "c": "An ACL applied to database indexes",
+      "d": "An ACL applied to list layouts"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is table.none ACL and what access does it control?",
+    "answers": {
+      "a": "Controls access to a specific field only",
+      "b": "Controls access to the entire table (record-level access)",
+      "c": "Controls script execution only",
+      "d": "Controls client-side validation"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "What is table.* ACL and what access does it control?",
+    "answers": {
+      "a": "Controls access to all fields of a table",
+      "b": "Controls access only to reference fields",
+      "c": "Controls access to database structure",
+      "d": "Controls access to UI policies"
+    },
+    "rightAnswers": "a"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Where do ACLs execute in ServiceNow?",
+    "answers": {
+      "a": "Client-side only",
+      "b": "Server-side",
+      "c": "Browser only",
+      "d": "Mobile application only"
+    },
+    "rightAnswers": "b"
+  },
+  {
+    "category": "Access Control Lists",
+    "question": "Who can configure ACLs in ServiceNow?",
+    "answers": {
+      "a": "Any end user",
+      "b": "Users with security_admin or admin role (with elevated privileges)",
+      "c": "Only itil users",
+      "d": "Only catalog_admin users"
+    },
+    "rightAnswers": "b"
   }
 ];
