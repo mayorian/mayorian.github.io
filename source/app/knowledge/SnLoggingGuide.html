@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ServiceNow Logging — Client vs Server (Futuristic)</title>
+  <style>
+    :root{
+      /* Futuristic / neon SN-inspired palette */
+      --bg0:#050711;
+      --bg1:#070a18;
+      --panel:rgba(255,255,255,.04);
+      --panel2:rgba(255,255,255,.06);
+      --border:rgba(140,180,255,.22);
+      --border2:rgba(0,255,209,.18);
+      --text:#EAF1FF;
+      --muted:rgba(234,241,255,.72);
+      --muted2:rgba(234,241,255,.55);
+
+      --neonBlue:#5AA7FF;
+      --neonCyan:#00FFD1;
+      --neonViolet:#B08CFF;
+      --neonPink:#FF4DDB;
+      --neonGreen:#52FF9F;
+      --neonAmber:#FFCC66;
+      --neonRed:#FF4B5C;
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --radius:16px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 18% 10%, rgba(90,167,255,.18), transparent 55%),
+        radial-gradient(1100px 650px at 80% 15%, rgba(176,140,255,.14), transparent 58%),
+        radial-gradient(900px 600px at 60% 85%, rgba(0,255,209,.10), transparent 58%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    /* Subtle animated grid */
+    .gridfx{
+      position:fixed;
+      inset:-40px;
+      background:
+        linear-gradient(rgba(90,167,255,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,209,.06) 1px, transparent 1px);
+      background-size: 54px 54px;
+      mask-image: radial-gradient(600px 500px at 35% 18%, black 0%, transparent 72%);
+      opacity:.55;
+      pointer-events:none;
+      animation: drift 16s linear infinite;
+    }
+    @keyframes drift{
+      0%{ transform:translate3d(0,0,0); }
+      100%{ transform:translate3d(-54px,-54px,0); }
+    }
+
+    .wrap{ max-width:1160px; margin:0 auto; padding:0 18px; }
+
+    header{
+      position:relative;
+      padding:30px 0 18px;
+    }
+
+    .hero{
+      position:relative;
+      border-radius: calc(var(--radius) + 6px);
+      padding:22px 18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03)),
+        radial-gradient(900px 200px at 20% 0%, rgba(0,255,209,.14), transparent 60%),
+        radial-gradient(900px 240px at 80% 10%, rgba(176,140,255,.16), transparent 60%);
+      border:1px solid rgba(140,180,255,.20);
+      box-shadow:
+        0 0 0 1px rgba(0,255,209,.06) inset,
+        0 18px 60px rgba(0,0,0,.55);
+      overflow:hidden;
+    }
+
+    .hero:before{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        conic-gradient(from 200deg at 40% 20%,
+          rgba(0,255,209,.20),
+          rgba(90,167,255,.12),
+          rgba(176,140,255,.16),
+          rgba(255,77,219,.12),
+          rgba(0,255,209,.20));
+      opacity:.12;
+      filter: blur(22px);
+      transform: translate3d(0,0,0);
+      pointer-events:none;
+    }
+
+    .topline{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      position:relative;
+      z-index:2;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 12px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(140,180,255,.18);
+      color:var(--muted);
+      font-weight:700;
+      letter-spacing:.25px;
+      font-size:12px;
+      text-transform:uppercase;
+      backdrop-filter: blur(10px);
+    }
+
+    .chip .dot{
+      width:9px; height:9px; border-radius:999px;
+      background:var(--neonCyan);
+      box-shadow: 0 0 12px rgba(0,255,209,.55);
+    }
+
+    h1{
+      margin:12px 0 0;
+      position:relative;
+      z-index:2;
+      font-size:26px;
+      line-height:1.15;
+      letter-spacing:.2px;
+      text-shadow: 0 0 18px rgba(90,167,255,.18);
+    }
+
+    .sub{
+      margin:10px 0 0;
+      position:relative;
+      z-index:2;
+      color:var(--muted);
+      font-size:14px;
+      max-width:90ch;
+    }
+
+    .legend{
+      margin-top:14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      position:relative;
+      z-index:2;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 12px;
+      border-radius:999px;
+      border:1px solid rgba(140,180,255,.18);
+      background:rgba(255,255,255,.03);
+      color:var(--muted);
+      font-size:12px;
+      backdrop-filter: blur(10px);
+    }
+    .pill b{ color:var(--text); font-weight:800; }
+    .pDot{ width:9px; height:9px; border-radius:999px; display:inline-block; }
+    .pDot.client{ background:var(--neonBlue); box-shadow:0 0 14px rgba(90,167,255,.55); }
+    .pDot.server{ background:var(--neonGreen); box-shadow:0 0 14px rgba(82,255,159,.50); }
+    .pDot.ui{ background:var(--neonAmber); box-shadow:0 0 14px rgba(255,204,102,.45); }
+    .pDot.err{ background:var(--neonRed); box-shadow:0 0 14px rgba(255,75,92,.45); }
+
+    main{ padding:14px 0 46px; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:16px;
+    }
+    @media (min-width: 980px){
+      .grid{ grid-template-columns: 1fr 1fr; }
+      .span-2{ grid-column: span 2; }
+    }
+
+    .card{
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+      border:1px solid rgba(140,180,255,.18);
+      box-shadow:
+        0 0 0 1px rgba(0,255,209,.05) inset,
+        0 20px 70px rgba(0,0,0,.55);
+      overflow:hidden;
+      position:relative;
+    }
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(700px 220px at 20% 0%, rgba(0,255,209,.10), transparent 60%),
+        radial-gradient(700px 240px at 85% 10%, rgba(176,140,255,.10), transparent 60%);
+      opacity:.8;
+      pointer-events:none;
+    }
+
+    .card h2{
+      margin:0;
+      padding:14px 16px;
+      border-bottom:1px solid rgba(140,180,255,.15);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      position:relative;
+      z-index:2;
+      font-size:14.5px;
+      letter-spacing:.25px;
+      text-transform:uppercase;
+      color:rgba(234,241,255,.88);
+    }
+    .card h2 .hint{
+      font-size:12px;
+      color:var(--muted2);
+      letter-spacing:.15px;
+      text-transform:none;
+      border:1px solid rgba(140,180,255,.16);
+      padding:5px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.03);
+      backdrop-filter: blur(10px);
+      white-space:nowrap;
+    }
+
+    .content{
+      padding:14px 16px 18px;
+      position:relative;
+      z-index:2;
+    }
+
+    /* Tables */
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      border-radius: 14px;
+      overflow:hidden;
+      border:1px solid rgba(140,180,255,.18);
+      background:rgba(5,7,17,.35);
+      backdrop-filter: blur(8px);
+    }
+    thead th{
+      text-align:left;
+      padding:10px 12px;
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.25px;
+      background: linear-gradient(90deg, rgba(90,167,255,.12), rgba(0,255,209,.08));
+      border-bottom:1px solid rgba(140,180,255,.18);
+    }
+    tbody td{
+      padding:10px 12px;
+      border-bottom:1px solid rgba(140,180,255,.12);
+      vertical-align:top;
+      font-size:14px;
+      color:rgba(234,241,255,.88);
+    }
+    tbody tr:last-child td{ border-bottom:none; }
+
+    code{
+      font-family:var(--mono);
+      font-size:12.5px;
+      color:rgba(234,241,255,.92);
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(140,180,255,.16);
+      padding:1px 6px;
+      border-radius:8px;
+    }
+
+    .codeblock{
+      margin-top:12px;
+      font-family:var(--mono);
+      font-size:12.5px;
+      line-height:1.45;
+      color:#EAF1FF;
+      background:
+        radial-gradient(700px 220px at 18% 0%, rgba(0,255,209,.12), transparent 55%),
+        radial-gradient(700px 220px at 82% 0%, rgba(176,140,255,.12), transparent 55%),
+        rgba(255,255,255,.03);
+      border:1px solid rgba(140,180,255,.18);
+      border-radius:14px;
+      padding:12px 12px;
+      overflow:auto;
+      box-shadow: 0 0 0 1px rgba(0,255,209,.05) inset;
+      white-space:pre;
+    }
+
+    .note{
+      margin-top:12px;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(140,180,255,.18);
+      background:rgba(255,255,255,.03);
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .alert{
+      margin-top:12px;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,75,92,.26);
+      background:rgba(255,75,92,.08);
+      color:rgba(255,231,234,.92);
+      font-size:13px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+    }
+    .alert b{ color:#fff; }
+
+    footer{
+      margin-top:18px;
+      color:var(--muted2);
+      font-size:12px;
+      text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <div class="gridfx" aria-hidden="true"></div>
+
+  <header>
+    <div class="wrap">
+      <div class="hero">
+        <div class="topline">
+          <span class="chip"><span class="dot"></span>ServiceNow • Logging Matrix</span>
+          <span class="chip">Execution Context</span>
+          <span class="chip">Client • Server • UI</span>
+        </div>
+        <h1>Client-Side vs Server-Side Logging (Futuristic SN Theme)</h1>
+        <p class="sub">
+          Use <b>client logging</b> for browser-side debugging (<span class="pill"><span class="pDot client"></span><b>client</b> console</span>),
+          use <b>server logging</b> for platform-side tracing (<span class="pill"><span class="pDot server"></span><b>server</b> syslog</span>),
+          and use <b>UI messages</b> for end-user feedback (<span class="pill"><span class="pDot ui"></span><b>UI</b> form</span>).
+        </p>
+        <div class="legend">
+          <span class="pill"><span class="pDot client"></span><b>Client</b>: DevTools Console</span>
+          <span class="pill"><span class="pDot server"></span><b>Server</b>: System Logs (syslog)</span>
+          <span class="pill"><span class="pDot ui"></span><b>UI</b>: Form messages</span>
+          <span class="pill"><span class="pDot err"></span><b>Rule</b>: don’t mix contexts</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="grid">
+
+        <!-- Core Comparison -->
+        <section class="card span-2">
+          <h2>Core Comparison <span class="hint">Where it runs • where it prints</span></h2>
+          <div class="content">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:28%;">Category</th>
+                  <th style="width:36%;">Client-side Logging</th>
+                  <th style="width:36%;">Server-side Logging</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Runs on</strong></td>
+                  <td>Browser (user session)</td>
+                  <td>ServiceNow server</td>
+                </tr>
+                <tr>
+                  <td><strong>Typical scripts</strong></td>
+                  <td>Client Script, Catalog Client Script, UI Page client code, Portal client controller</td>
+                  <td>Business Rule, Script Include, Scheduled Script, Fix Script, Flow/Workflow server actions</td>
+                </tr>
+                <tr>
+                  <td><strong>Purpose</strong></td>
+                  <td>UI + form behavior debugging</td>
+                  <td>Backend + record processing tracing</td>
+                </tr>
+                <tr>
+                  <td><strong>Primary APIs</strong></td>
+                  <td><code>jslog()</code>, <code>console.log()</code>, <code>console.warn()</code>, <code>console.error()</code></td>
+                  <td><code>gs.info()</code>, <code>gs.warn()</code>, <code>gs.error()</code>, <code>gs.debug()</code>, <code>gs.log()</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Where to view</strong></td>
+                  <td>DevTools → Console</td>
+                  <td>System Logs → All (<code>syslog.list</code>)</td>
+                </tr>
+                <tr>
+                  <td><strong>Database access</strong></td>
+                  <td>❌ No</td>
+                  <td>✅ Yes (GlideRecord)</td>
+                </tr>
+                <tr>
+                  <td><strong>Who sees it</strong></td>
+                  <td>Developer in that browser session</td>
+                  <td>Admins/devs with log access</td>
+                </tr>
+                <tr>
+                  <td><strong>Do not confuse with</strong></td>
+                  <td colspan="2">
+                    <code>addInfoMessage</code>/<code>addErrorMessage</code> (UI banners) — user feedback, not system logs.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="alert">
+              <div>⚠️</div>
+              <div>
+                <b>Context rule:</b> <code>gs.*</code> is server-only. <code>console.*</code> / <code>jslog()</code> is client-only.
+                Using the wrong API in the wrong layer will not behave as expected.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Client Methods -->
+        <section class="card">
+          <h2>Client Methods <span class="hint"><span class="pDot client"></span> console output</span></h2>
+          <div class="content">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:34%;">Method</th>
+                  <th style="width:66%;">Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>jslog(message)</code></td>
+                  <td>ServiceNow helper — prints to browser console (SN-tagged).</td>
+                </tr>
+                <tr>
+                  <td><code>console.log(message)</code></td>
+                  <td>General debugging output.</td>
+                </tr>
+                <tr>
+                  <td><code>console.warn(message)</code></td>
+                  <td>Warnings for non-blocking issues.</td>
+                </tr>
+                <tr>
+                  <td><code>console.error(message)</code></td>
+                  <td>Errors for failures/exceptions.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="codeblock">// Client Script (browser)
+function onChange(control, oldValue, newValue, isLoading) {
+  jslog("onChange fired: newValue=" + newValue);
+  console.log("caller_id=" + g_form.getValue("caller_id"));
+  if (!newValue) console.warn("Empty value detected");
+}</div>
+
+            <div class="note">
+              View: <b>F12 → Console</b>. Client logs are developer-only and scoped to the current browser session.
+            </div>
+          </div>
+        </section>
+
+        <!-- Server Methods -->
+        <section class="card">
+          <h2>Server Methods (GlideSystem) <span class="hint"><span class="pDot server"></span> syslog output</span></h2>
+          <div class="content">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:34%;">Method</th>
+                  <th style="width:22%;">Level</th>
+                  <th style="width:44%;">Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>gs.info(message)</code></td>
+                  <td>INFO</td>
+                  <td>Operational message.</td>
+                </tr>
+                <tr>
+                  <td><code>gs.warn(message)</code></td>
+                  <td>WARN</td>
+                  <td>Unexpected but non-fatal condition.</td>
+                </tr>
+                <tr>
+                  <td><code>gs.error(message)</code></td>
+                  <td>ERROR</td>
+                  <td>Failure / critical condition.</td>
+                </tr>
+                <tr>
+                  <td><code>gs.debug(message)</code></td>
+                  <td>DEBUG</td>
+                  <td>Debug traces (depends on debug visibility).</td>
+                </tr>
+                <tr>
+                  <td><code>gs.log(message, source)</code></td>
+                  <td>CUSTOM</td>
+                  <td>Custom source label for filtering/tracing.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="codeblock">// Business Rule (server)
+gs.info("BR started: " + current.getTableName() + " " + current.sys_id);
+gs.warn("Priority=" + current.priority);
+gs.error("Missing assignment_group for " + current.number);
+gs.log("Trace checkpoint", "INCIDENT_RULE");</div>
+
+            <div class="note">
+              View: <b>System Logs → All</b> (<code>syslog.list</code>). Server logs are instance-wide.
+            </div>
+          </div>
+        </section>
+
+        <!-- UI Messages -->
+        <section class="card span-2">
+          <h2>UI Messages (Not Logging) <span class="hint"><span class="pDot ui"></span> form output</span></h2>
+          <div class="content">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:26%;">Goal</th>
+                  <th style="width:37%;">Client API (Form UI)</th>
+                  <th style="width:37%;">Server API (Form UI)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Info banner</strong></td>
+                  <td><code>g_form.addInfoMessage("...")</code></td>
+                  <td><code>gs.addInfoMessage("...")</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Error banner</strong></td>
+                  <td><code>g_form.addErrorMessage("...")</code></td>
+                  <td><code>gs.addErrorMessage("...")</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Field message</strong></td>
+                  <td><code>g_form.showFieldMsg("field","msg","error|info")</code></td>
+                  <td>Typically done on client; server-side requires UI patterns (not a log)</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="codeblock">// Client UI messages (end-user feedback)
+function onLoad() {
+  g_form.addInfoMessage("Verify mandatory fields before saving.");
+}
+
+function onSubmit() {
+  if (!g_form.getValue("short_description")) {
+    g_form.addErrorMessage("Short description is mandatory.");
+    g_form.showFieldMsg("short_description", "Required", "error");
+    return false;
+  }
+}</div>
+
+            <div class="note">
+              UI messages are visible to users and should not be used as developer logging in production.
+            </div>
+          </div>
+        </section>
+
+        <!-- Quick Decision -->
+        <section class="card span-2">
+          <h2>Quick Decision Guide <span class="hint">choose the correct channel</span></h2>
+          <div class="content">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:44%;">Need</th>
+                  <th style="width:32%;">Use</th>
+                  <th style="width:24%;">Output</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Confirm client script executed / inspect values</td>
+                  <td><code>jslog()</code> / <code>console.log()</code></td>
+                  <td>Console</td>
+                </tr>
+                <tr>
+                  <td>Trace backend logic / database updates</td>
+                  <td><code>gs.info()</code> / <code>gs.warn()</code> / <code>gs.error()</code></td>
+                  <td>Syslog</td>
+                </tr>
+                <tr>
+                  <td>Notify user / enforce UX validation</td>
+                  <td><code>g_form.add*Message()</code> / <code>showFieldMsg()</code></td>
+                  <td>Form UI</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <footer>
+        Futuristic theme only; content reflects standard ServiceNow execution contexts and logging/UI messaging patterns.
+      </footer>
+    </div>
+  </main>
+</body>
+</html>
