@@ -27,9 +27,9 @@
       --text: rgba(255,255,255,.92);
       --muted: rgba(255,255,255,.62);
 
-      --high:#ff3b3b;   /* red */
-      --med:#ff9f1a;    /* orange */
-      --low:#3aa6ff;    /* blue */
+      --high:#ff3b3b;
+      --med:#ff9f1a;
+      --low:#3aa6ff;
 
       --good:#35d07f;
       --shadow: 0 18px 60px rgba(0,0,0,.55);
@@ -316,7 +316,6 @@
       white-space:nowrap;
     }
 
-    /* Smaller Graphs (30%) */
     .chartWrap{
       width: 30%;
       min-width: 160px;
@@ -360,6 +359,115 @@
       50%{ box-shadow: inset 0 0 0 1px rgba(58,166,255,.25), 0 0 22px rgba(58,166,255,.18); }
       100%{ box-shadow: inset 0 0 0 0 rgba(58,166,255,.0), 0 0 0 rgba(0,0,0,0); }
     }
+
+    .titleWithInfo{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      position:relative;
+    }
+
+    .tooltip{
+      display:inline-flex;
+      align-items:center;
+    }
+
+    .infoBtn{
+      width:20px;
+      height:20px;
+      min-width:20px;
+      padding:0;
+      border-radius:999px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.82);
+      box-shadow: 0 6px 18px rgba(0,0,0,.22);
+      font-size: 11px;
+      line-height:1;
+      font-weight:800;
+    }
+
+    .infoBtn:hover,
+    .infoBtn[aria-expanded="true"],
+    .infoBtn:focus-visible{
+      background: rgba(255,255,255,.14);
+      border-color: rgba(58,166,255,.45);
+      color:#fff;
+      outline:none;
+    }
+
+    .tooltipModal{
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(5, 8, 16, .68);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .2s ease, visibility .2s ease;
+      z-index: 1000;
+    }
+
+    .tooltipModal.open{
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .tooltipDialog{
+      width: min(560px, calc(100vw - 32px));
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(20,26,42,.96), rgba(8,11,20,.96));
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 30px 80px rgba(0,0,0,.5);
+      overflow: hidden;
+    }
+
+    .tooltipDialogHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 16px 18px 12px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), transparent);
+    }
+
+    .tooltipDialogTitle{
+      margin:0;
+      font-size:15px;
+      font-weight:760;
+      letter-spacing:.2px;
+      color:var(--text);
+    }
+
+    .tooltipDialogClose{
+      width:32px;
+      height:32px;
+      min-width:32px;
+      padding:0;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:16px;
+      font-weight:700;
+    }
+
+    .tooltipDialogBody{
+      padding: 16px 18px 18px 18px;
+      color: rgba(255,255,255,.88);
+      font-size: 13px;
+      line-height: 1.65;
+    }
   </style>
 </head>
 
@@ -370,7 +478,6 @@
   <div class="wrap">
     <header>
       <div class="title">
-       <!-- <img src="jsmayo02.png" width="100" height="30"> -->
         <h1>Prompt Validator Tool</h1>
         <p class="sub">Realtime validation • impact analytics • clarity score • tokens • charts</p>
       </div>
@@ -384,7 +491,19 @@
       <section class="card">
         <div class="cardhead">
           <div class="left">
-            <h2>Prompt</h2>
+            <div class="titleWithInfo">
+              <h2>Prompt</h2>
+              <div class="tooltip">
+                <button
+                  class="infoBtn"
+                  type="button"
+                  aria-label="Explain Prompt section"
+                  aria-expanded="false"
+                  data-tooltip-title="Prompt"
+                  data-tooltip-text="This is the main input area where you type or paste your prompt. The validator scans the text for flagged wording and updates the metrics and charts based on what is written here."
+                >i</button>
+              </div>
+            </div>
             <div class="hint">Type or paste your prompt here to get started</div>
           </div>
           <div class="btnrow">
@@ -410,7 +529,19 @@
       <aside class="card">
         <div class="cardhead">
           <div class="left">
-            <h2>Statistics</h2>
+            <div class="titleWithInfo">
+              <h2>Statistics</h2>
+              <div class="tooltip">
+                <button
+                  class="infoBtn"
+                  type="button"
+                  aria-label="Explain Statistics section"
+                  aria-expanded="false"
+                  data-tooltip-title="Statistics"
+                  data-tooltip-text="This panel summarizes the current prompt. It shows character, word, and token counts, how many flagged terms were found by impact level, and visual charts that help you judge prompt quality at a glance."
+                >i</button>
+              </div>
+            </div>
             <div class="hint">Impact counts + length + tokenization + clarity model</div>
           </div>
           <div class="btnrow">
@@ -452,7 +583,19 @@
           <div class="charts">
             <div class="chartCard">
               <div class="chartTitle">
-                <span>Impact Distribution</span>
+                <div class="titleWithInfo">
+                  <span>Impact Distribution</span>
+                  <div class="tooltip">
+                    <button
+                      class="infoBtn"
+                      type="button"
+                      aria-label="Explain Impact Distribution chart"
+                      aria-expanded="false"
+                      data-tooltip-title="Impact Distribution"
+                      data-tooltip-text="This chart shows how many flagged words were detected in each severity bucket: high, medium, and low impact. It helps you see whether vague wording is concentrated in stronger or lighter signal terms."
+                    >i</button>
+                  </div>
+                </div>
                 <span class="badge" id="impactBadge">0 flagged words</span>
               </div>
               <div class="chartWrap">
@@ -462,7 +605,19 @@
 
             <div class="chartCard">
               <div class="chartTitle">
-                <span>Prompt Clarity</span>
+                <div class="titleWithInfo">
+                  <span>Prompt Clarity</span>
+                  <div class="tooltip">
+                    <button
+                      class="infoBtn"
+                      type="button"
+                      aria-label="Explain Prompt Clarity chart"
+                      aria-expanded="false"
+                      data-tooltip-title="Prompt Clarity"
+                      data-tooltip-text="This score estimates how clear the prompt is based on its length and the weighted number of flagged terms. Higher values mean the prompt is likely more specific and less diluted by vague or low-information wording."
+                    >i</button>
+                  </div>
+                </div>
                 <span class="badge" id="clarityBadge">0%</span>
               </div>
               <div class="chartWrap">
@@ -472,7 +627,19 @@
 
             <div class="chartCard">
               <div class="chartTitle">
-                <span>Length Mix</span>
+                <div class="titleWithInfo">
+                  <span>Length Mix</span>
+                  <div class="tooltip">
+                    <button
+                      class="infoBtn"
+                      type="button"
+                      aria-label="Explain Length Mix chart"
+                      aria-expanded="false"
+                      data-tooltip-title="Length Mix"
+                      data-tooltip-text="This chart compares the prompt size across characters, words, and estimated tokens. It helps you understand how compact or expanded the prompt is from different measurement perspectives."
+                    >i</button>
+                  </div>
+                </div>
                 <span class="badge" id="lenBadge">chars / words / tokens</span>
               </div>
               <div class="chartWrap">
@@ -487,13 +654,20 @@
 
   <div class="toast" id="toast"></div>
 
+  <div class="tooltipModal" id="tooltipModal" aria-hidden="true">
+    <div class="tooltipDialog" role="dialog" aria-modal="true" aria-labelledby="tooltipModalTitle">
+      <div class="tooltipDialogHead">
+        <h3 class="tooltipDialogTitle" id="tooltipModalTitle">Tooltip</h3>
+        <button class="tooltipDialogClose" id="tooltipModalClose" type="button" aria-label="Close tooltip">×</button>
+      </div>
+      <div class="tooltipDialogBody" id="tooltipModalBody"></div>
+    </div>
+  </div>
+
   <!-- word lists -->
   <script src="https://cdn.jsdelivr.net/gh/mayorian/tooling@main/prompt_validator/data.js"></script>
 
   <script>
-    /*************************************************
-     * 0) Central color system (THIS fixes your issue)
-     *************************************************/
     const CSS = getComputedStyle(document.documentElement);
     const COLORS = {
       impact: {
@@ -512,16 +686,12 @@
     };
 
     function applyDatasetColors(chart, colors){
-      // colors can be [c1,c2,c3...] or a single color
       const ds = chart.data.datasets[0];
       ds.backgroundColor = Array.isArray(colors) ? colors : colors;
       ds.borderColor = "rgba(255,255,255,.16)";
       ds.borderWidth = 1;
     }
 
-    /*************************************************
-     * 1) Helpers: regex building, counting, tokenizing
-     *************************************************/
     const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     function buildWordRegex(words){
@@ -560,9 +730,6 @@
       return Math.max(0, Math.ceil(text.length / 4));
     }
 
-    /*************************************************
-     * 2) Prompt clarity model
-     *************************************************/
     function clarityScore({ chars, words, high, med, low }){
       const weighted = high*6 + med*3 + low*1;
       const norm = Math.sqrt((words || 0) + 1);
@@ -572,9 +739,6 @@
       return Math.round(score);
     }
 
-    /*************************************************
-     * 3) CodeMirror overlay highlighting
-     *************************************************/
     function impactOverlay(){
       return {
         token: function(stream){
@@ -618,9 +782,6 @@
     ro.observe(resizable);
     cm.setSize(null, resizable.clientHeight);
 
-    /*************************************************
-     * 4) Chart defaults + consistent legend/tooltip
-     *************************************************/
     Chart.defaults.color = "rgba(255,255,255,.78)";
     Chart.defaults.borderColor = "rgba(255,255,255,.14)";
     Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
@@ -651,9 +812,6 @@
       }
     };
 
-    /*************************************************
-     * 5) Charts with explicit palettes (fix)
-     *************************************************/
     const impactChart = new Chart(document.getElementById("chartImpact"), {
       type: "pie",
       data: {
@@ -676,10 +834,9 @@
       },
       options: commonOptions
     });
-    // Greyscale only
     applyDatasetColors(clarityChart, [
-      COLORS.gray.g5, // clarity (lighter)
-      COLORS.gray.g1  // penalty (darker)
+      COLORS.gray.g5,
+      COLORS.gray.g1
     ]);
 
     const lenChart = new Chart(document.getElementById("chartLen"), {
@@ -690,21 +847,16 @@
       },
       options: commonOptions
     });
-    // Greyscale (keeps UI consistent; change if you want colors)
     applyDatasetColors(lenChart, [
       COLORS.gray.g2,
       COLORS.gray.g4,
       COLORS.gray.g5
     ]);
 
-    // Important: after styling datasets, update once
     impactChart.update();
     clarityChart.update();
     lenChart.update();
 
-    /*************************************************
-     * 6) Realtime validation + UI actions
-     *************************************************/
     const $ = (id) => document.getElementById(id);
 
     const toast = $("toast");
@@ -802,12 +954,74 @@
 
     validateNow();
 
-    /*************************************************
-     * 7) Futuristic particles
-     *************************************************/
+    const tooltipModal = document.getElementById("tooltipModal");
+    const tooltipModalTitle = document.getElementById("tooltipModalTitle");
+    const tooltipModalBody = document.getElementById("tooltipModalBody");
+    const tooltipModalClose = document.getElementById("tooltipModalClose");
+    const tooltipButtons = document.querySelectorAll(".infoBtn");
+
+    let activeTooltipBtn = null;
+
+    function openTooltipModal(title, text, btn){
+      tooltipModalTitle.textContent = title || "Tooltip";
+      tooltipModalBody.textContent = text || "";
+      tooltipModal.classList.add("open");
+      tooltipModal.setAttribute("aria-hidden", "false");
+
+      if(activeTooltipBtn){
+        activeTooltipBtn.setAttribute("aria-expanded", "false");
+      }
+
+      activeTooltipBtn = btn || null;
+      if(activeTooltipBtn){
+        activeTooltipBtn.setAttribute("aria-expanded", "true");
+      }
+
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeTooltipModal(){
+      tooltipModal.classList.remove("open");
+      tooltipModal.setAttribute("aria-hidden", "true");
+
+      if(activeTooltipBtn){
+        activeTooltipBtn.setAttribute("aria-expanded", "false");
+        activeTooltipBtn.focus();
+      }
+
+      activeTooltipBtn = null;
+      document.body.style.overflow = "";
+    }
+
+    tooltipButtons.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openTooltipModal(
+          btn.dataset.tooltipTitle,
+          btn.dataset.tooltipText,
+          btn
+        );
+      });
+    });
+
+    tooltipModalClose.addEventListener("click", closeTooltipModal);
+
+    tooltipModal.addEventListener("click", (e) => {
+      if(e.target === tooltipModal){
+        closeTooltipModal();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape" && tooltipModal.classList.contains("open")){
+        closeTooltipModal();
+      }
+    });
+
     const canvas = document.getElementById("fx");
     const c = canvas.getContext("2d");
     let W=0,H=0,parts=[];
+
     function resizeFx(){
       W = canvas.width = window.innerWidth * devicePixelRatio;
       H = canvas.height = window.innerHeight * devicePixelRatio;
