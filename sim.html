@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D autobus simulátor – Košice / Hlavná stanica</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: #0b1020; }
+    #map { position: fixed; inset: 0; }
+    #hud {
+      position: fixed; left: 18px; top: 18px; z-index: 5; color: #fff;
+      background: rgba(8, 15, 32, .76); backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,.16); border-radius: 18px;
+      padding: 14px 16px; min-width: 270px; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    #hud h1 { font-size: 16px; margin: 0 0 8px; letter-spacing: .2px; }
+    #hud p { margin: 4px 0; color: #cfd7ff; font-size: 13px; line-height: 1.35; }
+    .kbd { display: inline-block; min-width: 18px; text-align: center; padding: 2px 6px; border-radius: 7px; background: rgba(255,255,255,.14); color: #fff; font-weight: 700; }
+    #panel {
+      position: fixed; right: 18px; top: 18px; z-index: 5; color: #fff;
+      background: rgba(8, 15, 32, .76); backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,.16); border-radius: 18px;
+      padding: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    button, select {
+      appearance: none; border: 0; border-radius: 12px; padding: 10px 12px;
+      background: rgba(255,255,255,.14); color: white; font-weight: 700; cursor: pointer;
+    }
+    select option { color: #111; }
+    #speed { font-variant-numeric: tabular-nums; }
+    #crosshair {
+      position: fixed; left: 50%; top: 50%; width: 8px; height: 8px; margin-left: -4px; margin-top: -4px;
+      border-radius: 99px; background: rgba(255,255,255,.65); z-index: 4; box-shadow: 0 0 18px rgba(255,255,255,.6);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="crosshair"></div>
+
+  <div id="hud">
+    <h1>3D autobus simulátor – Košice</h1>
+    <p>Štart: <b>Hlavná stanica Košice</b></p>
+    <p><span class="kbd">W</span> plyn &nbsp; <span class="kbd">S</span> brzda/cúvanie &nbsp; <span class="kbd">A</span>/<span class="kbd">D</span> zatáčanie</p>
+    <p><span class="kbd">C</span> kamera &nbsp; <span class="kbd">R</span> reset &nbsp; <span class="kbd">M</span> mapa</p>
+    <p>Rýchlosť: <b id="speed">0</b> km/h · Kamera: <b id="camName">Follow</b></p>
+  </div>
+
+  <div id="panel">
+    <select id="styleSelect" title="Typ mapy">
+      <option value="basic">Základná mapa</option>
+      <option value="outdoor">Turistická mapa</option>
+      <option value="aerial">Letecká mapa</option>
+      <option value="winter">Zimná mapa</option>
+    </select>
+  </div>
+
+  <script>
+    const API_KEY = "861af82587648750a62340c4dabb3589";
+    const START = { lng: 21.26723, lat: 48.72102 }; // Košice hlavná stanica, približne
+
+    const state = {
+      lng: START.lng,
+      lat: START.lat,
+      heading: 92,
+      speed: 0,
+      cameraMode: 0,
+      mapSet: "basic",
+      keys: {}
+    };
+
+    const cameraModes = ["Follow", "Driver", "Top", "Free cinematic"];
+    const meterPerDegLat = 111320;
+    const degLngMeters = () => 111320 * Math.cos(state.lat * Math.PI / 180);
+
+    function tileSource(mapSet) {
+      return {
+        type: "raster",
+        tiles: [`https://api.mapy.com/v1/maptiles/${mapSet}/256/{z}/{x}/{y}?apikey=${API_KEY}`],
+        tileSize: 256,
+        minzoom: 0,
+        maxzoom: mapSet === "aerial" ? 19 : 20,
+        attribution: '<a href="https://api.mapy.com/copyright" target="_blank">© Mapy.com</a> © OpenStreetMap contributors'
+      };
+    }
+
+    function mapStyle(mapSet) {
+      const sources = { mapy: tileSource(mapSet) };
+      const layers = [{ id: "mapy", type: "raster", source: "mapy" }];
+
+      // Letecká mapa je bez popisov, preto pridáme transparentnú vrstvu názvov a hraníc.
+      if (mapSet === "aerial") {
+        sources.labels = tileSource("names-overlay");
+        layers.push({ id: "labels", type: "raster", source: "labels" });
+      }
+
+      return {
+        version: 8,
+        name: `Mapy.com ${mapSet}`,
+        sources,
+        layers
+      };
+    }
+
+    window.addEventListener("error", (e) => {
+      console.error(e.message || e.error);
+      showWarning("Prehliadač zablokoval externý zdroj. Spusti súbor cez lokálny server, napr. `python -m http.server`, nie ako priamy file:// súbor.");
+    });
+
+    function showWarning(text) {
+      let box = document.getElementById("warningBox");
+      if (!box) {
+        box = document.createElement("div");
+        box.id = "warningBox";
+        box.style.cssText = "position:fixed;left:18px;bottom:18px;z-index:10;max-width:520px;padding:12px 14px;border-radius:14px;background:rgba(120,35,20,.9);color:#fff;font:13px system-ui;box-shadow:0 12px 30px rgba(0,0,0,.35)";
+        document.body.appendChild(box);
+      }
+      box.textContent = text;
+    }
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: mapStyle(state.mapSet),
+      center: [state.lng, state.lat],
+      zoom: 17.2,
+      pitch: 66,
+      bearing: state.heading,
+      antialias: true,
+      attributionControl: true
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
+
+    const modelOrigin = [state.lng, state.lat];
+    const modelAltitude = 0;
+    const modelAsMercator = maplibregl.MercatorCoordinate.fromLngLat(modelOrigin, modelAltitude);
+    const modelTransform = {
+      translateX: modelAsMercator.x,
+      translateY: modelAsMercator.y,
+      translateZ: modelAsMercator.z,
+      scale: modelAsMercator.meterInMercatorCoordinateUnits()
+    };
+
+    let bus, wheels = [];
+    const customLayer = {
+      id: "bus-3d-model",
+      type: "custom",
+      renderingMode: "3d",
+      onAdd: function(map, gl) {
+        this.camera = new THREE.Camera();
+        this.scene = new THREE.Scene();
+
+        const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+        sun.position.set(70, -110, 160);
+        this.scene.add(sun);
+        this.scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+
+        bus = createBusModel();
+        this.scene.add(bus);
+
+        this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
+        this.renderer.autoClear = false;
+      },
+      render: function(gl, matrix) {
+        const rotationX = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+        const rotationZ = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0, 0, 1), -state.heading * Math.PI / 180);
+        const m = new THREE.Matrix4().fromArray(matrix);
+        const l = new THREE.Matrix4()
+          .makeTranslation(modelTransform.translateX, modelTransform.translateY, modelTransform.translateZ)
+          .scale(new THREE.Vector3(modelTransform.scale, -modelTransform.scale, modelTransform.scale))
+          .multiply(rotationX)
+          .multiply(rotationZ);
+
+        this.camera.projectionMatrix = m.multiply(l);
+        this.renderer.resetState();
+        this.renderer.render(this.scene, this.camera);
+        map.triggerRepaint();
+      }
+    };
+
+    function createBusModel() {
+      const group = new THREE.Group();
+
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e88ff, roughness: .48, metalness: .15 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0xf5f8ff, roughness: .36 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x122642, roughness: .18, metalness: .35, transparent: true, opacity: .72 });
+      const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: .7 });
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0xd7dde8, roughness: .34, metalness: .55 });
+      const lightMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xffdb75, emissiveIntensity: .8 });
+      const redMat = new THREE.MeshStandardMaterial({ color: 0xff2d2d, emissive: 0x661010, emissiveIntensity: .5 });
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(3.0, 11.5, 2.5), bodyMat);
+      body.position.z = 1.55;
+      group.add(body);
+
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(2.75, 10.6, .28), roofMat);
+      roof.position.z = 2.95;
+      group.add(roof);
+
+      const front = new THREE.Mesh(new THREE.BoxGeometry(2.82, .12, 1.35), glassMat);
+      front.position.set(0, -5.83, 2.05);
+      group.add(front);
+
+      for (let i = 0; i < 5; i++) {
+        const winL = new THREE.Mesh(new THREE.BoxGeometry(.08, 1.45, .75), glassMat);
+        winL.position.set(-1.53, -3.65 + i * 1.65, 2.18);
+        group.add(winL);
+        const winR = winL.clone();
+        winR.position.x = 1.53;
+        group.add(winR);
+      }
+
+      const door = new THREE.Mesh(new THREE.BoxGeometry(.09, 1.55, 1.65), glassMat);
+      door.position.set(1.56, -3.1, 1.58);
+      group.add(door);
+
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(1.65, .08, .38), new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0x222200, emissiveIntensity: .6 }));
+      sign.position.set(0, -5.91, 2.82);
+      group.add(sign);
+
+      const routeCanvas = document.createElement("canvas");
+      routeCanvas.width = 256; routeCanvas.height = 64;
+      const ctx = routeCanvas.getContext("2d");
+      ctx.fillStyle = "#111"; ctx.fillRect(0,0,256,64);
+      ctx.fillStyle = "#ffdf4d"; ctx.font = "bold 34px system-ui"; ctx.fillText("BUS 29", 30, 43);
+      const routeTexture = new THREE.CanvasTexture(routeCanvas);
+      const route = new THREE.Mesh(new THREE.PlaneGeometry(1.55, .38), new THREE.MeshBasicMaterial({ map: routeTexture }));
+      route.position.set(0, -5.975, 2.82);
+      route.rotation.x = Math.PI / 2;
+      group.add(route);
+
+      [[-1.55,-4.25], [1.55,-4.25], [-1.55,3.95], [1.55,3.95]].forEach(([x,y]) => {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .34, 32), tireMat);
+        wheel.rotation.y = Math.PI / 2;
+        wheel.position.set(x, y, .55);
+        group.add(wheel);
+        wheels.push(wheel);
+
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(.24, .24, .36, 28), rimMat);
+        rim.rotation.y = Math.PI / 2;
+        rim.position.copy(wheel.position);
+        group.add(rim);
+      });
+
+      [[-.78,-5.93], [.78,-5.93]].forEach(([x,y]) => {
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(.34, .08, .18), lightMat);
+        lamp.position.set(x,y,1.05); group.add(lamp);
+      });
+      [[-.88,5.85], [.88,5.85]].forEach(([x,y]) => {
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(.32, .08, .18), redMat);
+        lamp.position.set(x,y,1.1); group.add(lamp);
+      });
+
+      // Three.js model stojí v lokálnom bode mapy. Pohyb robíme zmenou GPS centra mapy a offsetom modelu.
+      group.position.set(0, 0, 0);
+      return group;
+    }
+
+    map.on("style.load", () => {
+      if (!map.getLayer("bus-3d-model")) map.addLayer(customLayer);
+    });
+
+    window.addEventListener("keydown", e => {
+      state.keys[e.key.toLowerCase()] = true;
+      if (e.key.toLowerCase() === "c") nextCamera();
+      if (e.key.toLowerCase() === "r") resetBus();
+      if (e.key.toLowerCase() === "m") cycleMap();
+    });
+    window.addEventListener("keyup", e => state.keys[e.key.toLowerCase()] = false);
+
+    document.getElementById("styleSelect").addEventListener("change", e => setMapSet(e.target.value));
+
+    function nextCamera() {
+      state.cameraMode = (state.cameraMode + 1) % cameraModes.length;
+      document.getElementById("camName").textContent = cameraModes[state.cameraMode];
+    }
+
+    function cycleMap() {
+      const vals = ["basic", "outdoor", "aerial", "winter"];
+      const next = vals[(vals.indexOf(state.mapSet) + 1) % vals.length];
+      document.getElementById("styleSelect").value = next;
+      setMapSet(next);
+    }
+
+    function setMapSet(mapSet) {
+      state.mapSet = mapSet;
+      map.setStyle(mapStyle(mapSet));
+    }
+
+    function resetBus() {
+      state.lng = START.lng;
+      state.lat = START.lat;
+      state.heading = 92;
+      state.speed = 0;
+      map.jumpTo({ center: [state.lng, state.lat], zoom: 17.2, pitch: 66, bearing: state.heading });
+    }
+
+    let last = performance.now();
+    function tick(now) {
+      const dt = Math.min((now - last) / 1000, .05);
+      last = now;
+      updateVehicle(dt);
+      updateCamera(dt);
+      document.getElementById("speed").textContent = Math.round(Math.abs(state.speed) * 3.6);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    function updateVehicle(dt) {
+      const forward = state.keys["w"] ? 1 : 0;
+      const reverse = state.keys["s"] ? 1 : 0;
+      const steer = (state.keys["d"] ? 1 : 0) - (state.keys["a"] ? 1 : 0);
+
+      const accel = 5.5;
+      const brake = 8.5;
+      const drag = 1.35;
+      const maxFwd = 18.0;   // m/s ~ 65 km/h
+      const maxBack = -5.5;
+
+      if (forward) state.speed += accel * dt;
+      if (reverse) state.speed -= brake * dt;
+      if (!forward && !reverse) {
+        const dragAmount = drag * dt * Math.sign(state.speed);
+        state.speed = Math.abs(state.speed) < Math.abs(dragAmount) ? 0 : state.speed - dragAmount;
+      }
+      state.speed = Math.max(maxBack, Math.min(maxFwd, state.speed));
+
+      const steerPower = Math.min(1, Math.abs(state.speed) / 8) * 54;
+      state.heading += steer * steerPower * dt * Math.sign(state.speed || 1);
+
+      const rad = state.heading * Math.PI / 180;
+      const meters = state.speed * dt;
+      state.lng += Math.sin(rad) * meters / degLngMeters();
+      state.lat += Math.cos(rad) * meters / meterPerDegLat;
+
+      const merc = maplibregl.MercatorCoordinate.fromLngLat([state.lng, state.lat], 0);
+      modelTransform.translateX = merc.x;
+      modelTransform.translateY = merc.y;
+      modelTransform.translateZ = merc.z;
+      modelTransform.scale = merc.meterInMercatorCoordinateUnits();
+
+      wheels.forEach(w => w.rotation.x -= state.speed * dt * 1.8);
+    }
+
+    function updateCamera(dt) {
+      const rad = state.heading * Math.PI / 180;
+      const backMeters = state.cameraMode === 1 ? -1.2 : state.cameraMode === 2 ? 0 : state.cameraMode === 3 ? -28 : -18;
+      const sideMeters = state.cameraMode === 3 ? 13 : 0;
+      const pitch = [66, 74, 0, 58][state.cameraMode];
+      const zoom = [17.6, 19.1, 18.1, 16.8][state.cameraMode];
+      const bearing = state.cameraMode === 2 ? 0 : state.heading + (state.cameraMode === 3 ? -20 : 0);
+
+      const centerLng = state.lng - Math.sin(rad) * backMeters / degLngMeters() + Math.cos(rad) * sideMeters / degLngMeters();
+      const centerLat = state.lat - Math.cos(rad) * backMeters / meterPerDegLat - Math.sin(rad) * sideMeters / meterPerDegLat;
+
+      map.easeTo({
+        center: [centerLng, centerLat],
+        bearing,
+        pitch,
+        zoom,
+        duration: 0,
+        essential: true
+      });
+    }
+  </script>
+</body>
+</html>
