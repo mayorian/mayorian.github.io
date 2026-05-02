@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Bus Simulator - Three.js + MapLibre</title>
+  <title>3D Bus Simulator - Three.js + MapLibre + Mapy.cz</title>
 
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
 
@@ -55,7 +55,7 @@
   <canvas id="three-layer"></canvas>
 
   <div id="hud">
-    <b>3D Bus Simulator</b><br />
+    <b>3D Bus Simulator - Košice</b><br />
     WASD = pohyb autobusu<br />
     C = prepnutie kamery<br />
     Ľavé tlačidlo myši + pohyb = otáčanie kamery<br />
@@ -77,14 +77,38 @@
   <script type="module">
     import * as THREE from 'three';
 
+    const MAPY_API_KEY = 'nbFiyzGOyKx-2gJsBXzfGv4iPyzn4ykNCdd1Zno3gH0';
+
     const START = {
-      lng: 14.4378,
-      lat: 50.0755
+      // Košice - centrum
+      lng: 21.2611,
+      lat: 48.7164
     };
 
     const map = new maplibregl.Map({
       container: 'map',
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: {
+        version: 8,
+        sources: {
+          'mapy-basic': {
+            type: 'raster',
+            tiles: [
+              `https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${MAPY_API_KEY}`
+            ],
+            tileSize: 256,
+            attribution: '© Seznam.cz, a.s. © OpenStreetMap contributors'
+          }
+        },
+        layers: [
+          {
+            id: 'mapy-basic-layer',
+            type: 'raster',
+            source: 'mapy-basic',
+            minzoom: 0,
+            maxzoom: 19
+          }
+        ]
+      },
       center: [START.lng, START.lat],
       zoom: 17,
       pitch: 60,
@@ -101,7 +125,6 @@
     renderer.shadowMap.enabled = true;
 
     const scene = new THREE.Scene();
-
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
 
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.8);
@@ -171,12 +194,381 @@
 
     const driverSeatCameraOffset = new THREE.Vector3(0, 2.8, -3.25);
 
-    const keys = {
-      w: false,
-      a: false,
-      s: false,
-      d: false
+    const keys = { w: false, a: false, s: false, d: false };
+
+    let speed = 0;
+    let steering = 0;
+    let yaw = 0;
+    let cameraMode = 0;
+    const cameraModes = ['Follow', 'Driver', 'Top'];
+
+    let orbitYaw = 0;
+    let orbitPitch = 0.28;
+    let orbitDistance = 15;
+    let dragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    let geoLng = START.lng;
+    let geoLat = START.lat;
+
+    const speedEl = document.getElementById('speed');
+    const cameraModeEl = document.getElementById('camera-mode');
+
+    window.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      if (key in keys) keys[key] = true;
+
+      if (key === 'c') {
+        cameraMode = (cameraMode + 1) % cameraModes.length;
+        cameraModeEl.textContent = cameraModes[cameraMode];
+      }
+    });
+
+    window.addEventListener('keyup', (event) => {
+      const key = event.key.toLowerCase();
+      if (key in keys) keys[key] = false;
+    });
+
+    canvas.addEventListener('mousedown', (event) => {
+      if (event.button !== 0) return;
+      dragging = true;
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      dragging = false;
+    });
+
+    window.addEventListener('mousemove', (event) => {
+      if (!dragging) return;
+
+      const dx = event.clientX - lastMouseX;
+      const dy = event.clientY - lastMouseY;
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+
+      orbitYaw -= dx * 0.006;
+      orbitPitch -= dy * 0.004;
+      orbitPitch = THREE.MathUtils.clamp(orbitPitch, -0.15, 1.15);
+    });
+
+    window.addEventListener('wheel', (event) => {
+      orbitDistance += event.deltaY * 0.01;
+      orbitDistance = THREE.MathUtils.clamp(orbitDistance, 6, 40);
+    }, { passive: true });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function metersToLatLng(dx, dz, lat) {
+      const metersPerDegreeLat = 111320;
+      const metersPerDegreeLng = 111320 * Math.cos(lat * Math.PI / 180);
+      return {
+        lngDelta: dx / metersPerDegreeLng,
+        latDelta: dz / metersPerDegreeLat
+      };
+    }
+
+    const clock = new THREE.Clock();
+
+    function updateBus(dt) {
+      const acceleration = 9.5;
+      const braking = 14;
+      const friction = 4.2;
+      const maxSpeed = 28;
+      const maxReverse = -8;
+
+      if (keys.w) speed += acceleration * dt;
+      if (keys.s) speed -= braking * dt;
+
+      if (!keys.w && !keys.s) {
+        const sign = Math.sign(speed);
+        speed -= sign * friction * dt;
+        if (Math.sign(speed) !== sign) speed = 0;
+      }
+
+      speed = THREE.MathUtils.clamp(speed, maxReverse, maxSpeed);
+
+      const steerTarget = (keys.a ? 1 : 0) + (keys.d ? -1 : 0);
+      steering = THREE.MathUtils.lerp(steering, steerTarget, 8 * dt);
+
+      const turnStrength = 0.72;
+      yaw += steering * turnStrength * (speed / maxSpeed) * dt;
+
+      const forwardX = Math.sin(yaw);
+      const forwardZ = Math.cos(yaw);
+
+      const dx = forwardX * speed * dt;
+      const dz = forwardZ * speed * dt;
+
+      bus.position.x += dx;
+      bus.position.z += dz;
+      bus.rotation.y = yaw;
+
+      for (const wheel of wheels) {
+        wheel.rotation.x += speed * dt * 2.4;
+      }
+
+      const deltaGeo = metersToLatLng(dx, dz, geoLat);
+      geoLng += deltaGeo.lngDelta;
+      geoLat += deltaGeo.latDelta;
+
+      map.jumpTo({
+        center: [geoLng, geoLat],
+        bearing: THREE.MathUtils.radToDeg(-yaw),
+        pitch: 60,
+        zoom: 17
+      });
+
+      speedEl.textContent = Math.abs(speed * 3.6).toFixed(0);
+    }
+
+    function updateCamera() {
+      const busPos = bus.position.clone();
+
+      if (cameraMode === 0) {
+        const angle = yaw + orbitYaw;
+        const height = Math.sin(orbitPitch) * orbitDistance + 4;
+        const radius = Math.cos(orbitPitch) * orbitDistance;
+
+        camera.position.set(
+          busPos.x - Math.sin(angle) * radius,
+          busPos.y + height,
+          busPos.z - Math.cos(angle) * radius
+        );
+        camera.lookAt(busPos.x, busPos.y + 1.8, busPos.z);
+      }
+
+      if (cameraMode === 1) {
+        const localOffset = driverSeatCameraOffset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        camera.position.copy(busPos.clone().add(localOffset));
+
+        const lookDir = new THREE.Vector3(Math.sin(yaw), 0.05, Math.cos(yaw));
+        const mouseDir = new THREE.Vector3(Math.sin(yaw + orbitYaw), orbitPitch * 0.22, Math.cos(yaw + orbitYaw));
+        camera.lookAt(camera.position.clone().add(lookDir.lerp(mouseDir, 0.35).multiplyScalar(30)));
+      }
+
+      if (cameraMode === 2) {
+        camera.position.set(busPos.x, busPos.y + 55, busPos.z + 0.01);
+        camera.lookAt(busPos.x, busPos.y, busPos.z);
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const dt = Math.min(clock.getDelta(), 0.05);
+      updateBus(dt);
+      updateCamera();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>html>
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-w([developer.mapy.com](https://developer.mapy.com/en/rest-api-mapy-cz/map-libraries/))
+  <title>3D Bus Simulator - Three.js + MapLibre + Mapy.cz</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
+
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #111;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    #three-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    #hud {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 3;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: white;
+      background: rgba(0, 0, 0, 0.55);
+      line-height: 1.45;
+      user-select: none;
+      max-width: 380px;
+      backdrop-filter: blur(8px);
+    }
+
+    #hud b {
+      color: #9ad7ff;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <canvas id="three-layer"></canvas>
+
+  <div id="hud">
+    <b>3D Bus Simulator - Košice</b><br />
+    WASD = pohyb autobusu<br />
+    C = prepnutie kamery<br />
+    Ľavé tlačidlo myši + pohyb = otáčanie kamery<br />
+    Koliesko = zoom externej kamery<br />
+    Kamera: <span id="camera-mode">Follow</span><br />
+    Rýchlosť: <span id="speed">0</span> km/h
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const MAPY_API_KEY = 'nbFiyzGOyKx-2gJsBXzfGv4iPyzn4ykNCdd1Zno3gH0';
+
+    const START = {
+      // Košice - centrum
+      lng: 21.2611,
+      lat: 48.7164
     };
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          'mapy-basic': {
+            type: 'raster',
+            tiles: [
+              `https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${MAPY_API_KEY}`
+            ],
+            tileSize: 256,
+            attribution: '© Seznam.cz, a.s. © OpenStreetMap contributors'
+          }
+        },
+        layers: [
+          {
+            id: 'mapy-basic-layer',
+            type: 'raster',
+            source: 'mapy-basic',
+            minzoom: 0,
+            maxzoom: 19
+          }
+        ]
+      },
+      center: [START.lng, START.lat],
+      zoom: 17,
+      pitch: 60,
+      bearing: 0,
+      attributionControl: true
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+
+    const canvas = document.getElementById('three-layer');
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.8);
+    scene.add(hemiLight);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+    sun.position.set(100, 180, 80);
+    sun.castShadow = true;
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(4000, 4000),
+      new THREE.MeshStandardMaterial({ color: 0x1c1c1c, transparent: true, opacity: 0.15 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const grid = new THREE.GridHelper(4000, 160, 0x333333, 0x222222);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.25;
+    scene.add(grid);
+
+    const bus = new THREE.Group();
+    scene.add(bus);
+
+    function addBox(parent, size, position, color) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(size.x, size.y, size.z),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.1 })
+      );
+      mesh.position.copy(position);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    }
+
+    addBox(bus, new THREE.Vector3(2.7, 2.8, 8.5), new THREE.Vector3(0, 1.65, 0), 0x1e88e5);
+    addBox(bus, new THREE.Vector3(2.76, 0.25, 8.6), new THREE.Vector3(0, 3.15, 0), 0xffffff);
+    addBox(bus, new THREE.Vector3(2.78, 1.05, 0.12), new THREE.Vector3(0, 2.15, -4.32), 0x222222);
+    addBox(bus, new THREE.Vector3(2.78, 1.0, 0.12), new THREE.Vector3(0, 2.05, 4.32), 0x111111);
+
+    for (let z of [-2.3, 0.0, 2.3]) {
+      addBox(bus, new THREE.Vector3(0.08, 0.75, 1.25), new THREE.Vector3(-1.4, 2.15, z), 0x111111);
+      addBox(bus, new THREE.Vector3(0.08, 0.75, 1.25), new THREE.Vector3(1.4, 2.15, z), 0x111111);
+    }
+
+    function addWheel(x, z) {
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.45, 0.45, 0.35, 24),
+        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 })
+      );
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, 0.65, z);
+      wheel.castShadow = true;
+      bus.add(wheel);
+      return wheel;
+    }
+
+    const wheels = [
+      addWheel(-1.45, -2.8),
+      addWheel(1.45, -2.8),
+      addWheel(-1.45, 2.8),
+      addWheel(1.45, 2.8)
+    ];
+
+    const driverSeatCameraOffset = new THREE.Vector3(0, 2.8, -3.25);
+
+    const keys = { w: false, a: false, s: false, d: false };
 
     let speed = 0;
     let steering = 0;
