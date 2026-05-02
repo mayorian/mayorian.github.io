@@ -1,878 +1,922 @@
-// bus-simulator.js
-// Potrebné v HTML pred týmto skriptom:
-// 1) <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
-// 2) <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-// 3) <script type="module" src="./bus-simulator.js"></script>
-// 4) <div id="map"></div>
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bus Simulator - MapLibre + Mapy.cz</title>
 
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js';
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
 
-const CONFIG = {
-  mapContainerId: 'map',
-  mapyApiKey: 'nbFiyzGOyKx-2gJsBXzfGv4iPyzn4ykNCdd1Zno3gH0',
-  start: {
-    lng: 21.2611,
-    lat: 48.7164
-  },
-  startZoom: 18.2,
-  startPitch: 65
-};
-
-class BusSimulator {
-  constructor(config) {
-    this.config = config;
-
-    this.keys = {
-      w: false,
-      a: false,
-      s: false,
-      d: false
-    };
-
-    this.busLng = config.start.lng;
-    this.busLat = config.start.lat;
-    this.speed = 0;
-    this.heading = 0; // 0 = sever, 90 = vychod
-    this.steering = 0;
-
-    this.cameraMode = 0;
-    this.cameraModes = ['Follow', 'Driver', 'Top'];
-    this.cameraYawOffset = 0;
-    this.cameraPitch = config.startPitch;
-
-    this.dragging = false;
-    this.lastMouseX = 0;
-    this.lastMouseY = 0;
-    this.lastTime = performance.now();
-
-    this.speedEl = null;
-    this.cameraModeEl = null;
-
-    this.initDom();
-    this.initMap();
-    this.bindInput();
-  }
-
-  initDom() {
-    const mapEl = document.getElementById(this.config.mapContainerId);
-
-    if (!mapEl) {
-      throw new Error(`Element #${this.config.mapContainerId} neexistuje. Pridaj <div id="map"></div>.`);
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: Arial, sans-serif;
     }
 
-    Object.assign(document.documentElement.style, {
-      margin: '0',
-      width: '100%',
-      height: '100%',
-      overflow: 'hidden'
-    });
+    #map {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
 
-    Object.assign(document.body.style, {
-      margin: '0',
-      width: '100%',
-      height: '100%',
-      overflow: 'hidden',
-      fontFamily: 'Arial, sans-serif',
-      background: '#111'
-    });
+    #sim-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      perspective: 900px;
+      transform-style: preserve-3d;
+      overflow: hidden;
+    }
 
-    Object.assign(mapEl.style, {
-      position: 'fixed',
-      inset: '0',
-      zIndex: '1'
-    });
+    #sim-input-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      background: transparent;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
 
-    // Transparentná vrstva nad MapLibre canvasom.
-    // MapLibre potom neprepisuje mouse/pointer ovládanie kamery.
-    const inputLayer = document.createElement('div');
-    inputLayer.id = 'bus-input-layer';
-    Object.assign(inputLayer.style, {
-      position: 'fixed',
-      inset: '0',
-      zIndex: '5',
-      background: 'transparent',
-      cursor: 'grab',
-      touchAction: 'none',
-      userSelect: 'none'
-    });
-    document.body.appendChild(inputLayer);
+    #sim-hud {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 20;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: white;
+      background: rgba(0, 0, 0, 0.64);
+      line-height: 1.45;
+      user-select: none;
+      pointer-events: auto;
+      max-width: 440px;
+      backdrop-filter: blur(8px);
+    }
 
-    const hud = document.createElement('div');
-    hud.id = 'bus-hud';
-    hud.innerHTML = `
-      <b style="color:#9ad7ff">3D Bus Simulator - Košice</b><br>
-      W = plyn, S = brzda / cúvanie<br>
-      A / D = zatáčanie<br>
-      C = prepnutie kamery<br>
-      Ľavé tlačidlo myši + pohyb = kamera<br>
-      Kamera: <span id="camera-mode">Follow</span><br>
-      Rýchlosť: <span id="speed">0</span> km/h
-    `;
+    #sim-hud b {
+      color: #9ad7ff;
+    }
 
-    Object.assign(hud.style, {
-      position: 'fixed',
-      top: '14px',
-      left: '14px',
-      zIndex: '20',
-      padding: '12px 14px',
-      borderRadius: '12px',
-      color: 'white',
-      background: 'rgba(0,0,0,0.62)',
-      lineHeight: '1.45',
-      userSelect: 'none',
-      maxWidth: '430px',
-      backdropFilter: 'blur(8px)'
-    });
+    #bus {
+      position: absolute;
+      width: 44px;
+      height: 96px;
+      left: 0;
+      top: 0;
+      transform-origin: 50% 58%;
+      transform-style: preserve-3d;
+      pointer-events: none;
+      filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55));
+    }
 
-    document.body.appendChild(hud);
+    #bus .bus-body {
+      position: absolute;
+      inset: 0;
+      border-radius: 9px 9px 6px 6px;
+      background: linear-gradient(90deg, #0054d8, #1683ff 45%, #0054d8);
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      box-sizing: border-box;
+      transform: rotateX(58deg) translateZ(8px);
+      transform-style: preserve-3d;
+    }
 
-    this.speedEl = document.getElementById('speed');
-    this.cameraModeEl = document.getElementById('camera-mode');
-  }
+    #bus .bus-roof {
+      position: absolute;
+      left: 8px;
+      top: 16px;
+      width: 28px;
+      height: 56px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.88);
+    }
 
-  initMap() {
-    this.map = new maplibregl.Map({
-      container: this.config.mapContainerId,
-      style: {
-        version: 8,
-        sources: {
-          'mapy-basic': {
-            type: 'raster',
-            tiles: [
-              `https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${this.config.mapyApiKey}`
-            ],
-            tileSize: 256,
-            attribution: '© Seznam.cz, a.s. © OpenStreetMap contributors'
-          }
-        },
-        layers: [
-          {
-            id: 'mapy-basic-layer',
-            type: 'raster',
-            source: 'mapy-basic'
-          }
-        ]
+    #bus .bus-front-window {
+      position: absolute;
+      left: 8px;
+      top: 5px;
+      width: 28px;
+      height: 13px;
+      border-radius: 5px 5px 2px 2px;
+      background: #111;
+    }
+
+    #bus .bus-back-window {
+      position: absolute;
+      left: 8px;
+      bottom: 6px;
+      width: 28px;
+      height: 11px;
+      border-radius: 2px 2px 5px 5px;
+      background: #151515;
+    }
+
+    #bus .bus-headlight {
+      position: absolute;
+      top: 1px;
+      width: 8px;
+      height: 4px;
+      border-radius: 4px;
+      background: #fff7a8;
+      box-shadow: 0 0 8px #fff2a0;
+    }
+
+    #bus .bus-headlight.left {
+      left: 8px;
+    }
+
+    #bus .bus-headlight.right {
+      right: 8px;
+    }
+
+    #bus .bus-wheel {
+      position: absolute;
+      width: 9px;
+      height: 18px;
+      border-radius: 5px;
+      background: #050505;
+      border: 1px solid #333;
+    }
+
+    #bus .wl1 { left: -5px; top: 20px; }
+    #bus .wl2 { left: -5px; bottom: 20px; }
+    #bus .wr1 { right: -5px; top: 20px; }
+    #bus .wr2 { right: -5px; bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="sim-overlay">
+    <div id="bus">
+      <div class="bus-body">
+        <div class="bus-front-window"></div>
+        <div class="bus-back-window"></div>
+        <div class="bus-roof"></div>
+        <div class="bus-headlight left"></div>
+        <div class="bus-headlight right"></div>
+        <div class="bus-wheel wl1"></div>
+        <div class="bus-wheel wl2"></div>
+        <div class="bus-wheel wr1"></div>
+        <div class="bus-wheel wr2"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sim-input-layer"></div>
+
+  <div id="sim-hud">
+    <b>Bus Simulator - Košice</b><br />
+    W = plyn<br />
+    S = brzda / cúvanie<br />
+    A / D = zatáčanie<br />
+    C = prepnutie kamery<br />
+    Myš + ľavé tlačidlo = rotácia kamery<br />
+    Koliesko = zoom<br />
+    Kamera: <span id="sim-camera">Follow</span><br />
+    Rýchlosť: <span id="sim-speed">0</span> km/h
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+
+  <script>
+    const CONFIG = {
+      mapyApiKey: 'nbFiyzGOyKx-2gJsBXzfGv4iPyzn4ykNCdd1Zno3gH0',
+      start: {
+        lng: 21.2611,
+        lat: 48.7164
       },
-      center: [this.busLng, this.busLat],
-      zoom: this.config.startZoom,
-      pitch: this.config.startPitch,
-      bearing: 0,
-      antialias: true,
-      attributionControl: true
-    });
+      zoom: 18.4,
+      pitch: 60,
+      maxForwardSpeed: 15,
+      maxReverseSpeed: -4
+    };
 
-    this.map.dragPan.disable();
-    this.map.dragRotate.disable();
-    this.map.keyboard.disable();
-    this.map.touchZoomRotate.disableRotation();
+    class BusSimulator {
+      constructor(config) {
+        this.config = config;
 
-    this.map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+        this.lng = config.start.lng;
+        this.lat = config.start.lat;
+        this.speed = 0;
+        this.heading = 0;
+        this.steering = 0;
 
-    this.map.on('load', () => {
-      this.map.addLayer(this.createThreeBusLayer());
-      requestAnimationFrame((time) => this.loop(time));
-    });
-  }
+        this.keys = { w: false, a: false, s: false, d: false };
 
-  bindInput() {
-    window.addEventListener('keydown', (event) => {
-      const key = event.key.toLowerCase();
+        this.cameraMode = 0;
+        this.cameraModes = ['Follow', 'Driver', 'Top'];
+        this.cameraYawOffset = 0;
+        this.cameraPitch = config.pitch;
 
-      if (['w', 'a', 's', 'd', 'c', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) {
-        event.preventDefault();
+        this.draggingCamera = false;
+        this.lastPointerX = 0;
+        this.lastPointerY = 0;
+        this.lastTime = performance.now();
+
+        this.mapEl = document.getElementById('map');
+        this.bus = document.getElementById('bus');
+        this.busBody = document.querySelector('#bus .bus-body');
+        this.inputLayer = document.getElementById('sim-input-layer');
+        this.speedEl = document.getElementById('sim-speed');
+        this.cameraEl = document.getElementById('sim-camera');
+
+        this.createMap();
+        this.bindInput();
       }
 
-      if (key in this.keys) {
-        this.keys[key] = true;
-      }
-
-      if (key === 'c' && !event.repeat) {
-        this.cameraMode = (this.cameraMode + 1) % this.cameraModes.length;
-        this.cameraModeEl.textContent = this.cameraModes[this.cameraMode];
-      }
-    });
-
-    window.addEventListener('keyup', (event) => {
-      const key = event.key.toLowerCase();
-
-      if (key in this.keys) {
-        this.keys[key] = false;
-      }
-    });
-
-    const inputLayer = document.getElementById('bus-input-layer');
-
-    inputLayer.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
-
-      event.preventDefault();
-      this.dragging = true;
-      this.lastMouseX = event.clientX;
-      this.lastMouseY = event.clientY;
-      inputLayer.style.cursor = 'grabbing';
-      inputLayer.setPointerCapture(event.pointerId);
-    }, { passive: false });
-
-    inputLayer.addEventListener('pointerup', (event) => {
-      this.dragging = false;
-      inputLayer.style.cursor = 'grab';
-      inputLayer.releasePointerCapture(event.pointerId);
-    });
-
-    inputLayer.addEventListener('pointercancel', () => {
-      this.dragging = false;
-      inputLayer.style.cursor = 'grab';
-    });
-
-    inputLayer.addEventListener('pointermove', (event) => {
-      if (!this.dragging) return;
-
-      event.preventDefault();
-
-      const dx = event.clientX - this.lastMouseX;
-      const dy = event.clientY - this.lastMouseY;
-
-      this.lastMouseX = event.clientX;
-      this.lastMouseY = event.clientY;
-
-      this.cameraYawOffset += dx * 0.45;
-      this.cameraPitch = this.clamp(this.cameraPitch - dy * 0.25, 15, 82);
-    }, { passive: false });
-
-    inputLayer.addEventListener('contextmenu', (event) => {
-      event.preventDefault();
-    });
-  }
-
-  createThreeBusLayer() {
-    const simulator = this;
-
-    return {
-      id: 'threejs-bus-layer',
-      type: 'custom',
-      renderingMode: '3d',
-
-      onAdd(map, gl) {
-        this.map = map;
-        this.camera = new THREE.Camera();
-        this.scene = new THREE.Scene();
-
-        this.scene.add(new THREE.AmbientLight(0xffffff, 1.8));
-
-        const sun = new THREE.DirectionalLight(0xffffff, 2.4);
-        sun.position.set(80, 120, 160);
-        this.scene.add(sun);
-
-        const created = simulator.createBusModel();
-        this.bus = created.group;
-        this.wheels = created.wheels;
-        this.scene.add(this.bus);
-
-        this.renderer = new THREE.WebGLRenderer({
-          canvas: map.getCanvas(),
-          context: gl,
-          antialias: true
+      createMap() {
+        this.map = new maplibregl.Map({
+          container: 'map',
+          style: {
+            version: 8,
+            sources: {
+              'mapy-basic': {
+                type: 'raster',
+                tiles: [
+                  `https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${this.config.mapyApiKey}`
+                ],
+                tileSize: 256,
+                attribution: '© Seznam.cz, a.s. © OpenStreetMap contributors'
+              }
+            },
+            layers: [
+              {
+                id: 'mapy-basic-layer',
+                type: 'raster',
+                source: 'mapy-basic'
+              }
+            ]
+          },
+          center: [this.lng, this.lat],
+          zoom: this.config.zoom,
+          pitch: this.config.pitch,
+          bearing: 0,
+          attributionControl: true
         });
 
-        this.renderer.autoClear = false;
-      },
+        this.map.dragPan.disable();
+        this.map.dragRotate.disable();
+        this.map.scrollZoom.disable();
+        this.map.boxZoom.disable();
+        this.map.keyboard.disable();
+        this.map.doubleClickZoom.disable();
+        this.map.touchZoomRotate.disable();
 
-      render(gl, matrix) {
-        const mercator = maplibregl.MercatorCoordinate.fromLngLat(
-          { lng: simulator.busLng, lat: simulator.busLat },
-          0
-        );
+        this.map.on('load', () => {
+          this.updateCamera(true);
+          this.loop(performance.now());
+        });
+      }
 
-        const scale = mercator.meterInMercatorCoordinateUnits();
+      bindInput() {
+        window.addEventListener('keydown', (event) => {
+          const key = event.key.toLowerCase();
 
-        const modelMatrix = new THREE.Matrix4()
-          .makeTranslation(mercator.x, mercator.y, mercator.z)
-          .scale(new THREE.Vector3(scale, -scale, scale))
-          .multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2))
-          .multiply(new THREE.Matrix4().makeRotationZ(-THREE.MathUtils.degToRad(simulator.heading)));
-
-        this.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix).multiply(modelMatrix);
-
-        if (this.wheels) {
-          for (const wheel of this.wheels) {
-            wheel.rotation.x += simulator.speed * 0.025;
+          if (['w', 'a', 's', 'd', 'c', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) {
+            event.preventDefault();
           }
-        }
 
-        this.renderer.resetState();
-        this.renderer.render(this.scene, this.camera);
-        this.map.triggerRepaint();
-      }
-    };
-  }
-
-  createBusModel() {
-    const group = new THREE.Group();
-    const wheels = [];
-
-    const makeMaterial = (color) => new THREE.MeshStandardMaterial({
-      color,
-      roughness: 0.55,
-      metalness: 0.05
-    });
-
-    const box = (size, pos, color) => {
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(size.x, size.y, size.z),
-        makeMaterial(color)
-      );
-      mesh.position.copy(pos);
-      group.add(mesh);
-      return mesh;
-    };
-
-    // X = sirka, Y = vyska, Z = dopredu.
-    box(new THREE.Vector3(3.3, 3.0, 9.8), new THREE.Vector3(0, 1.7, 0), 0x0066ff);
-    box(new THREE.Vector3(3.35, 0.3, 9.95), new THREE.Vector3(0, 3.32, 0), 0xffffff);
-
-    // Predok je +Z.
-    box(new THREE.Vector3(2.8, 1.2, 0.12), new THREE.Vector3(0, 2.25, 5.0), 0x111111);
-    box(new THREE.Vector3(2.8, 1.0, 0.12), new THREE.Vector3(0, 2.15, -5.0), 0x151515);
-
-    for (const z of [-3.2, -1.3, 0.6, 2.5]) {
-      box(new THREE.Vector3(0.1, 0.85, 1.3), new THREE.Vector3(-1.7, 2.35, z), 0x111111);
-      box(new THREE.Vector3(0.1, 0.85, 1.3), new THREE.Vector3(1.7, 2.35, z), 0x111111);
-    }
-
-    box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(-0.8, 1.05, 5.08), 0xffffaa);
-    box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(0.8, 1.05, 5.08), 0xffffaa);
-
-    const wheel = (x, z) => {
-      const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.55, 0.55, 0.42, 32),
-        makeMaterial(0x080808)
-      );
-      mesh.rotation.z = Math.PI / 2;
-      mesh.position.set(x, 0.7, z);
-      group.add(mesh);
-      wheels.push(mesh);
-      return mesh;
-    };
-
-    wheel(-1.72, -3.2);
-    wheel(1.72, -3.2);
-    wheel(-1.72, 3.2);
-    wheel(1.72, 3.2);
-
-    return { group, wheels };
-  }
-
-  updatePhysics(dt) {
-    const acceleration = 7.5;
-    const braking = 11.0;
-    const friction = 3.5;
-    const maxSpeed = 15.0;
-    const maxReverse = -4.0;
-
-    if (this.keys.w) this.speed += acceleration * dt;
-    if (this.keys.s) this.speed -= braking * dt;
-
-    if (!this.keys.w && !this.keys.s) {
-      const sign = Math.sign(this.speed);
-      this.speed -= sign * friction * dt;
-      if (Math.sign(this.speed) !== sign) this.speed = 0;
-    }
-
-    this.speed = this.clamp(this.speed, maxReverse, maxSpeed);
-
-    const steerTarget = (this.keys.a ? -1 : 0) + (this.keys.d ? 1 : 0);
-    this.steering += (steerTarget - this.steering) * Math.min(1, 7 * dt);
-
-    const speedFactor = Math.min(1, Math.abs(this.speed) / maxSpeed);
-    const reverseFactor = this.speed >= 0 ? 1 : -1;
-    this.heading += this.steering * reverseFactor * 60 * speedFactor * dt;
-
-    const rad = THREE.MathUtils.degToRad(this.heading);
-    const east = Math.sin(rad) * this.speed * dt;
-    const north = Math.cos(rad) * this.speed * dt;
-
-    const next = this.metersToLngLat(this.busLng, this.busLat, east, north);
-    this.busLng = next.lng;
-    this.busLat = next.lat;
-
-    this.speedEl.textContent = Math.abs(this.speed * 3.6).toFixed(0);
-  }
-
-  updateCamera() {
-    let zoom = 18.4;
-    let pitch = this.cameraPitch;
-    let bearing = -this.heading + this.cameraYawOffset;
-
-    if (this.cameraMode === 1) {
-      zoom = 19.5;
-      pitch = 78;
-      bearing = -this.heading + this.cameraYawOffset;
-    }
-
-    if (this.cameraMode === 2) {
-      zoom = 18.2;
-      pitch = 0;
-      bearing = this.cameraYawOffset;
-    }
-
-    this.map.jumpTo({
-      center: [this.busLng, this.busLat],
-      zoom,
-      pitch,
-      bearing
-    });
-  }
-
-  loop(now) {
-    const dt = Math.min((now - this.lastTime) / 1000, 0.05);
-    this.lastTime = now;
-
-    this.updatePhysics(dt);
-    this.updateCamera();
-    this.map.triggerRepaint();
-
-    requestAnimationFrame((time) => this.loop(time));
-  }
-
-  metersToLngLat(lng, lat, eastMeters, northMeters) {
-    const metersPerDegreeLat = 111320;
-    const metersPerDegreeLng = 111320 * Math.cos(lat * Math.PI / 180);
-
-    return {
-      lng: lng + eastMeters / metersPerDegreeLng,
-      lat: lat + northMeters / metersPerDegreeLat
-    };
-  }
-
-  clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-  }
-}
-
-new BusSimulator(CONFIG);
-// bus-simulator.js
-// Potrebné v HTML pred týmto skriptom:
-// 1) <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
-// 2) <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-// 3) <script type="module" src="./bus-simulator.js"></script>
-// 4) <div id="map"></div>
-
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js';
-
-const CONFIG = {
-  mapContainerId: 'map',
-  mapyApiKey: 'nbFiyzGOyKx-2gJsBXzfGv4iPyzn4ykNCdd1Zno3gH0',
-  start: {
-    lng: 21.2611,
-    lat: 48.7164
-  },
-  startZoom: 18.2,
-  startPitch: 65
-};
-
-class BusSimulator {
-  constructor(config) {
-    this.config = config;
-
-    this.keys = {
-      w: false,
-      a: false,
-      s: false,
-      d: false
-    };
-
-    this.busLng = config.start.lng;
-    this.busLat = config.start.lat;
-    this.speed = 0;
-    this.heading = 0; // 0 = sever, 90 = vychod
-    this.steering = 0;
-
-    this.cameraMode = 0;
-    this.cameraModes = ['Follow', 'Driver', 'Top'];
-    this.cameraYawOffset = 0;
-    this.cameraPitch = config.startPitch;
-
-    this.dragging = false;
-    this.lastMouseX = 0;
-    this.lastMouseY = 0;
-    this.lastTime = performance.now();
-
-    this.speedEl = null;
-    this.cameraModeEl = null;
-
-    this.initDom();
-    this.initMap();
-    this.bindInput();
-  }
-
-  initDom() {
-    const mapEl = document.getElementById(this.config.mapContainerId);
-
-    if (!mapEl) {
-      throw new Error(`Element #${this.config.mapContainerId} neexistuje. Pridaj <div id="map"></div>.`);
-    }
-
-    Object.assign(document.documentElement.style, {
-      margin: '0',
-      width: '100%',
-      height: '100%',
-      overflow: 'hidden'
-    });
-
-    Object.assign(document.body.style, {
-      margin: '0',
-      width: '100%',
-      height: '100%',
-      overflow: 'hidden',
-      fontFamily: 'Arial, sans-serif',
-      background: '#111'
-    });
-
-    Object.assign(mapEl.style, {
-      position: 'fixed',
-      inset: '0'
-    });
-
-    const hud = document.createElement('div');
-    hud.id = 'bus-hud';
-    hud.innerHTML = `
-      <b style="color:#9ad7ff">3D Bus Simulator - Košice</b><br>
-      W = plyn, S = brzda / cúvanie<br>
-      A / D = zatáčanie<br>
-      C = prepnutie kamery<br>
-      Ľavé tlačidlo myši + pohyb = kamera<br>
-      Kamera: <span id="camera-mode">Follow</span><br>
-      Rýchlosť: <span id="speed">0</span> km/h
-    `;
-
-    Object.assign(hud.style, {
-      position: 'fixed',
-      top: '14px',
-      left: '14px',
-      zIndex: '10',
-      padding: '12px 14px',
-      borderRadius: '12px',
-      color: 'white',
-      background: 'rgba(0,0,0,0.62)',
-      lineHeight: '1.45',
-      userSelect: 'none',
-      maxWidth: '430px',
-      backdropFilter: 'blur(8px)'
-    });
-
-    document.body.appendChild(hud);
-
-    this.speedEl = document.getElementById('speed');
-    this.cameraModeEl = document.getElementById('camera-mode');
-  }
-
-  initMap() {
-    this.map = new maplibregl.Map({
-      container: this.config.mapContainerId,
-      style: {
-        version: 8,
-        sources: {
-          'mapy-basic': {
-            type: 'raster',
-            tiles: [
-              `https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${this.config.mapyApiKey}`
-            ],
-            tileSize: 256,
-            attribution: '© Seznam.cz, a.s. © OpenStreetMap contributors'
+          if (key in this.keys) {
+            this.keys[key] = true;
           }
-        },
-        layers: [
-          {
-            id: 'mapy-basic-layer',
-            type: 'raster',
-            source: 'mapy-basic'
+
+          if (key === 'c' && !event.repeat) {
+            this.cameraMode = (this.cameraMode + 1) % this.cameraModes.length;
+            this.cameraEl.textContent = this.cameraModes[this.cameraMode];
           }
-        ]
-      },
-      center: [this.busLng, this.busLat],
-      zoom: this.config.startZoom,
-      pitch: this.config.startPitch,
-      bearing: 0,
-      antialias: true,
-      attributionControl: true
-    });
-
-    this.map.dragPan.disable();
-    this.map.dragRotate.disable();
-    this.map.keyboard.disable();
-    this.map.touchZoomRotate.disableRotation();
-
-    this.map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-
-    this.map.on('load', () => {
-      this.map.addLayer(this.createThreeBusLayer());
-      requestAnimationFrame((time) => this.loop(time));
-    });
-  }
-
-  bindInput() {
-    window.addEventListener('keydown', (event) => {
-      const key = event.key.toLowerCase();
-
-      if (['w', 'a', 's', 'd', 'c', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) {
-        event.preventDefault();
-      }
-
-      if (key in this.keys) {
-        this.keys[key] = true;
-      }
-
-      if (key === 'c' && !event.repeat) {
-        this.cameraMode = (this.cameraMode + 1) % this.cameraModes.length;
-        this.cameraModeEl.textContent = this.cameraModes[this.cameraMode];
-      }
-    });
-
-    window.addEventListener('keyup', (event) => {
-      const key = event.key.toLowerCase();
-
-      if (key in this.keys) {
-        this.keys[key] = false;
-      }
-    });
-
-    window.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
-      if (event.target.closest && event.target.closest('#bus-hud')) return;
-
-      event.preventDefault();
-      this.dragging = true;
-      this.lastMouseX = event.clientX;
-      this.lastMouseY = event.clientY;
-    }, { passive: false });
-
-    window.addEventListener('pointerup', () => {
-      this.dragging = false;
-    });
-
-    window.addEventListener('pointercancel', () => {
-      this.dragging = false;
-    });
-
-    window.addEventListener('pointermove', (event) => {
-      if (!this.dragging) return;
-
-      event.preventDefault();
-
-      const dx = event.clientX - this.lastMouseX;
-      const dy = event.clientY - this.lastMouseY;
-
-      this.lastMouseX = event.clientX;
-      this.lastMouseY = event.clientY;
-
-      this.cameraYawOffset += dx * 0.35;
-      this.cameraPitch = this.clamp(this.cameraPitch - dy * 0.22, 15, 82);
-    }, { passive: false });
-  }
-
-  createThreeBusLayer() {
-    const simulator = this;
-
-    return {
-      id: 'threejs-bus-layer',
-      type: 'custom',
-      renderingMode: '3d',
-
-      onAdd(map, gl) {
-        this.map = map;
-        this.camera = new THREE.Camera();
-        this.scene = new THREE.Scene();
-
-        this.scene.add(new THREE.AmbientLight(0xffffff, 1.8));
-
-        const sun = new THREE.DirectionalLight(0xffffff, 2.4);
-        sun.position.set(80, 120, 160);
-        this.scene.add(sun);
-
-        const created = simulator.createBusModel();
-        this.bus = created.group;
-        this.wheels = created.wheels;
-        this.scene.add(this.bus);
-
-        this.renderer = new THREE.WebGLRenderer({
-          canvas: map.getCanvas(),
-          context: gl,
-          antialias: true
         });
 
-        this.renderer.autoClear = false;
-      },
-
-      render(gl, matrix) {
-        const mercator = maplibregl.MercatorCoordinate.fromLngLat(
-          { lng: simulator.busLng, lat: simulator.busLat },
-          0
-        );
-
-        const scale = mercator.meterInMercatorCoordinateUnits();
-
-        const modelMatrix = new THREE.Matrix4()
-          .makeTranslation(mercator.x, mercator.y, mercator.z)
-          .scale(new THREE.Vector3(scale, -scale, scale))
-          .multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2))
-          .multiply(new THREE.Matrix4().makeRotationZ(-THREE.MathUtils.degToRad(simulator.heading)));
-
-        this.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix).multiply(modelMatrix);
-
-        if (this.wheels) {
-          for (const wheel of this.wheels) {
-            wheel.rotation.x += simulator.speed * 0.025;
+        window.addEventListener('keyup', (event) => {
+          const key = event.key.toLowerCase();
+          if (key in this.keys) {
+            this.keys[key] = false;
           }
+        });
+
+        this.inputLayer.addEventListener('pointerdown', (event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+
+          this.draggingCamera = true;
+          this.lastPointerX = event.clientX;
+          this.lastPointerY = event.clientY;
+          this.inputLayer.style.cursor = 'grabbing';
+          this.inputLayer.setPointerCapture(event.pointerId);
+        }, { passive: false });
+
+        this.inputLayer.addEventListener('pointerup', (event) => {
+          this.draggingCamera = false;
+          this.inputLayer.style.cursor = 'grab';
+
+          try {
+            this.inputLayer.releasePointerCapture(event.pointerId);
+          } catch (error) {}
+        });
+
+        this.inputLayer.addEventListener('pointercancel', () => {
+          this.draggingCamera = false;
+          this.inputLayer.style.cursor = 'grab';
+        });
+
+        this.inputLayer.addEventListener('pointermove', (event) => {
+          if (!this.draggingCamera) return;
+          event.preventDefault();
+
+          const dx = event.clientX - this.lastPointerX;
+          const dy = event.clientY - this.lastPointerY;
+
+          this.lastPointerX = event.clientX;
+          this.lastPointerY = event.clientY;
+
+          this.cameraYawOffset += dx * 0.35;
+          this.cameraPitch = this.clamp(this.cameraPitch - dy * 0.20, 0, 75);
+        }, { passive: false });
+
+        this.inputLayer.addEventListener('wheel', (event) => {
+          event.preventDefault();
+          this.config.zoom = this.clamp(this.config.zoom - event.deltaY * 0.002, 16, 20);
+        }, { passive: false });
+
+        this.inputLayer.addEventListener('contextmenu', (event) => event.preventDefault());
+      }
+
+      updatePhysics(dt) {
+        const acceleration = 8.0;
+        const braking = 12.0;
+        const friction = 4.0;
+
+        if (this.keys.w) this.speed += acceleration * dt;
+        if (this.keys.s) this.speed -= braking * dt;
+
+        if (!this.keys.w && !this.keys.s) {
+          const sign = Math.sign(this.speed);
+          this.speed -= sign * friction * dt;
+          if (Math.sign(this.speed) !== sign) this.speed = 0;
         }
 
-        this.renderer.resetState();
-        this.renderer.render(this.scene, this.camera);
-        this.map.triggerRepaint();
+        this.speed = this.clamp(this.speed, this.config.maxReverseSpeed, this.config.maxForwardSpeed);
+
+        const steerTarget = (this.keys.a ? -1 : 0) + (this.keys.d ? 1 : 0);
+        this.steering += (steerTarget - this.steering) * Math.min(1, dt * 8);
+
+        const speedRatio = Math.min(1, Math.abs(this.speed) / this.config.maxForwardSpeed);
+        const reverse = this.speed >= 0 ? 1 : -1;
+        this.heading += this.steering * reverse * 72 * speedRatio * dt;
+
+        const rad = this.degToRad(this.heading);
+        const east = Math.sin(rad) * this.speed * dt;
+        const north = Math.cos(rad) * this.speed * dt;
+
+        const next = this.metersToLngLat(this.lng, this.lat, east, north);
+        this.lng = next.lng;
+        this.lat = next.lat;
+
+        this.speedEl.textContent = Math.abs(this.speed * 3.6).toFixed(0);
       }
-    };
-  }
 
-  createBusModel() {
-    const group = new THREE.Group();
-    const wheels = [];
+      updateCamera(force = false) {
+        let zoom = this.config.zoom;
+        let pitch = this.cameraPitch;
+        let bearing = -this.heading + this.cameraYawOffset;
 
-    const makeMaterial = (color) => new THREE.MeshStandardMaterial({
-      color,
-      roughness: 0.55,
-      metalness: 0.05
-    });
+        if (this.cameraMode === 1) {
+          zoom = this.config.zoom + 0.8;
+          pitch = Math.max(65, this.cameraPitch);
+          bearing = -this.heading + this.cameraYawOffset;
+        }
 
-    const box = (size, pos, color) => {
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(size.x, size.y, size.z),
-        makeMaterial(color)
-      );
-      mesh.position.copy(pos);
-      group.add(mesh);
-      return mesh;
-    };
+        if (this.cameraMode === 2) {
+          zoom = this.config.zoom - 0.2;
+          pitch = 0;
+          bearing = this.cameraYawOffset;
+        }
 
-    // X = sirka, Y = vyska, Z = dopredu.
-    box(new THREE.Vector3(3.3, 3.0, 9.8), new THREE.Vector3(0, 1.7, 0), 0x0066ff);
-    box(new THREE.Vector3(3.35, 0.3, 9.95), new THREE.Vector3(0, 3.32, 0), 0xffffff);
+        const options = {
+          center: [this.lng, this.lat],
+          zoom,
+          pitch,
+          bearing
+        };
 
-    // Predok je +Z.
-    box(new THREE.Vector3(2.8, 1.2, 0.12), new THREE.Vector3(0, 2.25, 5.0), 0x111111);
-    box(new THREE.Vector3(2.8, 1.0, 0.12), new THREE.Vector3(0, 2.15, -5.0), 0x151515);
+        if (force || this.map.loaded()) {
+          this.map.jumpTo(options);
+        }
+      }
 
-    for (const z of [-3.2, -1.3, 0.6, 2.5]) {
-      box(new THREE.Vector3(0.1, 0.85, 1.3), new THREE.Vector3(-1.7, 2.35, z), 0x111111);
-      box(new THREE.Vector3(0.1, 0.85, 1.3), new THREE.Vector3(1.7, 2.35, z), 0x111111);
+      updateBusDom() {
+        const point = this.map.project([this.lng, this.lat]);
+        const screenRotation = this.heading + this.map.getBearing();
+        const scale = Math.pow(2, this.map.getZoom() - 18.4);
+
+        this.bus.style.transform = [
+          `translate(${point.x - 22}px, ${point.y - 58}px)`,
+          `rotate(${screenRotation}deg)`,
+          `scale(${scale})`
+        ].join(' ');
+
+        this.busBody.style.transform = this.cameraMode === 2
+          ? 'rotateX(0deg) translateZ(8px)'
+          : 'rotateX(58deg) translateZ(8px)';
+      }
+
+      loop(now) {
+        const dt = Math.min((now - this.lastTime) / 1000, 0.05);
+        this.lastTime = now;
+
+        this.updatePhysics(dt);
+        this.updateCamera();
+        this.updateBusDom();
+
+        requestAnimationFrame((time) => this.loop(time));
+      }
+
+      metersToLngLat(lng, lat, eastMeters, northMeters) {
+        const metersPerDegreeLat = 111320;
+        const metersPerDegreeLng = 111320 * Math.cos(this.degToRad(lat));
+
+        return {
+          lng: lng + eastMeters / metersPerDegreeLng,
+          lat: lat + northMeters / metersPerDegreeLat
+        };
+      }
+
+      degToRad(deg) {
+        return deg * Math.PI / 180;
+      }
+
+      clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
     }
 
-    box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(-0.8, 1.05, 5.08), 0xffffaa);
-    box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(0.8, 1.05, 5.08), 0xffffaa);
+    new BusSimulator(CONFIG);
+  </script>
+</body>
+</html>
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bus Simulator - MapLibre + Mapy.cz</title>
 
-    const wheel = (x, z) => {
-      const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.55, 0.55, 0.42, 32),
-        makeMaterial(0x080808)
-      );
-      mesh.rotation.z = Math.PI / 2;
-      mesh.position.set(x, 0.7, z);
-      group.add(mesh);
-      wheels.push(mesh);
-      return mesh;
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
+
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    #sim-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      perspective: 900px;
+      transform-style: preserve-3d;
+      overflow: hidden;
+    }
+
+    #sim-input-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      background: transparent;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    #sim-hud {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 20;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: white;
+      background: rgba(0, 0, 0, 0.64);
+      line-height: 1.45;
+      user-select: none;
+      pointer-events: auto;
+      max-width: 440px;
+      backdrop-filter: blur(8px);
+    }
+
+    #sim-hud b {
+      color: #9ad7ff;
+    }
+
+    #bus {
+      position: absolute;
+      width: 44px;
+      height: 96px;
+      left: 0;
+      top: 0;
+      transform-origin: 50% 58%;
+      transform-style: preserve-3d;
+      pointer-events: none;
+      filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55));
+    }
+
+    #bus .bus-body {
+      position: absolute;
+      inset: 0;
+      border-radius: 9px 9px 6px 6px;
+      background: linear-gradient(90deg, #0054d8, #1683ff 45%, #0054d8);
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      box-sizing: border-box;
+      transform: rotateX(58deg) translateZ(8px);
+      transform-style: preserve-3d;
+    }
+
+    #bus .bus-roof {
+      position: absolute;
+      left: 8px;
+      top: 16px;
+      width: 28px;
+      height: 56px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    #bus .bus-front-window {
+      position: absolute;
+      left: 8px;
+      top: 5px;
+      width: 28px;
+      height: 13px;
+      border-radius: 5px 5px 2px 2px;
+      background: #111;
+    }
+
+    #bus .bus-back-window {
+      position: absolute;
+      left: 8px;
+      bottom: 6px;
+      width: 28px;
+      height: 11px;
+      border-radius: 2px 2px 5px 5px;
+      background: #151515;
+    }
+
+    #bus .bus-headlight {
+      position: absolute;
+      top: 1px;
+      width: 8px;
+      height: 4px;
+      border-radius: 4px;
+      background: #fff7a8;
+      box-shadow: 0 0 8px #fff2a0;
+    }
+
+    #bus .bus-headlight.left {
+      left: 8px;
+    }
+
+    #bus .bus-headlight.right {
+      right: 8px;
+    }
+
+    #bus .bus-wheel {
+      position: absolute;
+      width: 9px;
+      height: 18px;
+      border-radius: 5px;
+      background: #050505;
+      border: 1px solid #333;
+    }
+
+    #bus .wl1 { left: -5px; top: 20px; }
+    #bus .wl2 { left: -5px; bottom: 20px; }
+    #bus .wr1 { right: -5px; top: 20px; }
+    #bus .wr2 { right: -5px; bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="sim-overlay">
+    <div id="bus">
+      <div class="bus-body">
+        <div class="bus-front-window"></div>
+        <div class="bus-back-window"></div>
+        <div class="bus-roof"></div>
+        <div class="bus-headlight left"></div>
+        <div class="bus-headlight right"></div>
+        <div class="bus-wheel wl1"></div>
+        <div class="bus-wheel wl2"></div>
+        <div class="bus-wheel wr1"></div>
+        <div class="bus-wheel wr2"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sim-input-layer"></div>
+
+  <div id="sim-hud">
+    <b>Bus Simulator - Košice</b><br />
+    W = plyn<br />
+    S = brzda / cúvanie<br />
+    A / D = zatáčanie<br />
+    C = prepnutie kamery<br />
+    Myš + ľavé tlačidlo = rotácia kamery<br />
+    Koliesko = zoom<br />
+    Kamera: <span id="sim-camera">Follow</span><br />
+    Rýchlosť: <span id="sim-speed">0</span> km/h
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+
+  <script>
+    const CONFIG = {
+      mapyApiKey: 'nbFiyzGOyKx-2gJsBXzfGv4iPyzn4ykNCdd1Zno3gH0',
+      start: {
+        lng: 21.2611,
+        lat: 48.7164
+      },
+      zoom: 18.4,
+      pitch: 60,
+      maxForwardSpeed: 15,
+      maxReverseSpeed: -4
     };
 
-    wheel(-1.72, -3.2);
-    wheel(1.72, -3.2);
-    wheel(-1.72, 3.2);
-    wheel(1.72, 3.2);
+    class BusSimulator {
+      constructor(config) {
+        this.config = config;
 
-    return { group, wheels };
-  }
+        this.lng = config.start.lng;
+        this.lat = config.start.lat;
+        this.speed = 0;
+        this.heading = 0;
+        this.steering = 0;
 
-  updatePhysics(dt) {
-    const acceleration = 7.5;
-    const braking = 11.0;
-    const friction = 3.5;
-    const maxSpeed = 15.0;
-    const maxReverse = -4.0;
+        this.keys = { w: false, a: false, s: false, d: false };
 
-    if (this.keys.w) this.speed += acceleration * dt;
-    if (this.keys.s) this.speed -= braking * dt;
+        this.cameraMode = 0;
+        this.cameraModes = ['Follow', 'Driver', 'Top'];
+        this.cameraYawOffset = 0;
+        this.cameraPitch = config.pitch;
 
-    if (!this.keys.w && !this.keys.s) {
-      const sign = Math.sign(this.speed);
-      this.speed -= sign * friction * dt;
-      if (Math.sign(this.speed) !== sign) this.speed = 0;
+        this.draggingCamera = false;
+        this.lastPointerX = 0;
+        this.lastPointerY = 0;
+        this.lastTime = performance.now();
+
+        this.mapEl = document.getElementById('map');
+        this.bus = document.getElementById('bus');
+        this.busBody = document.querySelector('#bus .bus-body');
+        this.inputLayer = document.getElementById('sim-input-layer');
+        this.speedEl = document.getElementById('sim-speed');
+        this.cameraEl = document.getElementById('sim-camera');
+
+        this.createMap();
+        this.bindInput();
+      }
+
+      createMap() {
+        this.map = new maplibregl.Map({
+          container: 'map',
+          style: {
+            version: 8,
+            sources: {
+              'mapy-basic': {
+                type: 'raster',
+                tiles: [
+                  `https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${this.config.mapyApiKey}`
+                ],
+                tileSize: 256,
+                attribution: '© Seznam.cz, a.s. © OpenStreetMap contributors'
+              }
+            },
+            layers: [
+              {
+                id: 'mapy-basic-layer',
+                type: 'raster',
+                source: 'mapy-basic'
+              }
+            ]
+          },
+          center: [this.lng, this.lat],
+          zoom: this.config.zoom,
+          pitch: this.config.pitch,
+          bearing: 0,
+          attributionControl: true
+        });
+
+        this.map.dragPan.disable();
+        this.map.dragRotate.disable();
+        this.map.scrollZoom.disable();
+        this.map.boxZoom.disable();
+        this.map.keyboard.disable();
+        this.map.doubleClickZoom.disable();
+        this.map.touchZoomRotate.disable();
+
+        this.map.on('load', () => {
+          this.updateCamera(true);
+          this.loop(performance.now());
+        });
+      }
+
+      bindInput() {
+        window.addEventListener('keydown', (event) => {
+          const key = event.key.toLowerCase();
+
+          if (['w', 'a', 's', 'd', 'c', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) {
+            event.preventDefault();
+          }
+
+          if (key in this.keys) {
+            this.keys[key] = true;
+          }
+
+          if (key === 'c' && !event.repeat) {
+            this.cameraMode = (this.cameraMode + 1) % this.cameraModes.length;
+            this.cameraEl.textContent = this.cameraModes[this.cameraMode];
+          }
+        });
+
+        window.addEventListener('keyup', (event) => {
+          const key = event.key.toLowerCase();
+          if (key in this.keys) {
+            this.keys[key] = false;
+          }
+        });
+
+        this.inputLayer.addEventListener('pointerdown', (event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+
+          this.draggingCamera = true;
+          this.lastPointerX = event.clientX;
+          this.lastPointerY = event.clientY;
+          this.inputLayer.style.cursor = 'grabbing';
+          this.inputLayer.setPointerCapture(event.pointerId);
+        }, { passive: false });
+
+        this.inputLayer.addEventListener('pointerup', (event) => {
+          this.draggingCamera = false;
+          this.inputLayer.style.cursor = 'grab';
+
+          try {
+            this.inputLayer.releasePointerCapture(event.pointerId);
+          } catch (error) {}
+        });
+
+        this.inputLayer.addEventListener('pointercancel', () => {
+          this.draggingCamera = false;
+          this.inputLayer.style.cursor = 'grab';
+        });
+
+        this.inputLayer.addEventListener('pointermove', (event) => {
+          if (!this.draggingCamera) return;
+          event.preventDefault();
+
+          const dx = event.clientX - this.lastPointerX;
+          const dy = event.clientY - this.lastPointerY;
+
+          this.lastPointerX = event.clientX;
+          this.lastPointerY = event.clientY;
+
+          this.cameraYawOffset += dx * 0.35;
+          this.cameraPitch = this.clamp(this.cameraPitch - dy * 0.20, 0, 75);
+        }, { passive: false });
+
+        this.inputLayer.addEventListener('wheel', (event) => {
+          event.preventDefault();
+          this.config.zoom = this.clamp(this.config.zoom - event.deltaY * 0.002, 16, 20);
+        }, { passive: false });
+
+        this.inputLayer.addEventListener('contextmenu', (event) => event.preventDefault());
+      }
+
+      updatePhysics(dt) {
+        const acceleration = 8.0;
+        const braking = 12.0;
+        const friction = 4.0;
+
+        if (this.keys.w) this.speed += acceleration * dt;
+        if (this.keys.s) this.speed -= braking * dt;
+
+        if (!this.keys.w && !this.keys.s) {
+          const sign = Math.sign(this.speed);
+          this.speed -= sign * friction * dt;
+          if (Math.sign(this.speed) !== sign) this.speed = 0;
+        }
+
+        this.speed = this.clamp(this.speed, this.config.maxReverseSpeed, this.config.maxForwardSpeed);
+
+        const steerTarget = (this.keys.a ? -1 : 0) + (this.keys.d ? 1 : 0);
+        this.steering += (steerTarget - this.steering) * Math.min(1, dt * 8);
+
+        const speedRatio = Math.min(1, Math.abs(this.speed) / this.config.maxForwardSpeed);
+        const reverse = this.speed >= 0 ? 1 : -1;
+        this.heading += this.steering * reverse * 72 * speedRatio * dt;
+
+        const rad = this.degToRad(this.heading);
+        const east = Math.sin(rad) * this.speed * dt;
+        const north = Math.cos(rad) * this.speed * dt;
+
+        const next = this.metersToLngLat(this.lng, this.lat, east, north);
+        this.lng = next.lng;
+        this.lat = next.lat;
+
+        this.speedEl.textContent = Math.abs(this.speed * 3.6).toFixed(0);
+      }
+
+      updateCamera(force = false) {
+        let zoom = this.config.zoom;
+        let pitch = this.cameraPitch;
+        let bearing = -this.heading + this.cameraYawOffset;
+
+        if (this.cameraMode === 1) {
+          zoom = this.config.zoom + 0.8;
+          pitch = Math.max(65, this.cameraPitch);
+          bearing = -this.heading + this.cameraYawOffset;
+        }
+
+        if (this.cameraMode === 2) {
+          zoom = this.config.zoom - 0.2;
+          pitch = 0;
+          bearing = this.cameraYawOffset;
+        }
+
+        const options = {
+          center: [this.lng, this.lat],
+          zoom,
+          pitch,
+          bearing
+        };
+
+        if (force || this.map.loaded()) {
+          this.map.jumpTo(options);
+        }
+      }
+
+      updateBusDom() {
+        const point = this.map.project([this.lng, this.lat]);
+        const screenRotation = this.heading + this.map.getBearing();
+        const scale = Math.pow(2, this.map.getZoom() - 18.4);
+
+        this.bus.style.transform = [
+          `translate(${point.x - 22}px, ${point.y - 58}px)`,
+          `rotate(${screenRotation}deg)`,
+          `scale(${scale})`
+        ].join(' ');
+
+        this.busBody.style.transform = this.cameraMode === 2
+          ? 'rotateX(0deg) translateZ(8px)'
+          : 'rotateX(58deg) translateZ(8px)';
+      }
+
+      loop(now) {
+        const dt = Math.min((now - this.lastTime) / 1000, 0.05);
+        this.lastTime = now;
+
+        this.updatePhysics(dt);
+        this.updateCamera();
+        this.updateBusDom();
+
+        requestAnimationFrame((time) => this.loop(time));
+      }
+
+      metersToLngLat(lng, lat, eastMeters, northMeters) {
+        const metersPerDegreeLat = 111320;
+        const metersPerDegreeLng = 111320 * Math.cos(this.degToRad(lat));
+
+        return {
+          lng: lng + eastMeters / metersPerDegreeLng,
+          lat: lat + northMeters / metersPerDegreeLat
+        };
+      }
+
+      degToRad(deg) {
+        return deg * Math.PI / 180;
+      }
+
+      clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
     }
 
-    this.speed = this.clamp(this.speed, maxReverse, maxSpeed);
-
-    const steerTarget = (this.keys.a ? -1 : 0) + (this.keys.d ? 1 : 0);
-    this.steering += (steerTarget - this.steering) * Math.min(1, 7 * dt);
-
-    const speedFactor = Math.min(1, Math.abs(this.speed) / maxSpeed);
-    const reverseFactor = this.speed >= 0 ? 1 : -1;
-    this.heading += this.steering * reverseFactor * 60 * speedFactor * dt;
-
-    const rad = THREE.MathUtils.degToRad(this.heading);
-    const east = Math.sin(rad) * this.speed * dt;
-    const north = Math.cos(rad) * this.speed * dt;
-
-    const next = this.metersToLngLat(this.busLng, this.busLat, east, north);
-    this.busLng = next.lng;
-    this.busLat = next.lat;
-
-    this.speedEl.textContent = Math.abs(this.speed * 3.6).toFixed(0);
-  }
-
-  updateCamera() {
-    let zoom = 18.4;
-    let pitch = this.cameraPitch;
-    let bearing = -this.heading + this.cameraYawOffset;
-
-    if (this.cameraMode === 1) {
-      zoom = 19.5;
-      pitch = 78;
-      bearing = -this.heading + this.cameraYawOffset;
-    }
-
-    if (this.cameraMode === 2) {
-      zoom = 18.2;
-      pitch = 0;
-      bearing = this.cameraYawOffset;
-    }
-
-    this.map.jumpTo({
-      center: [this.busLng, this.busLat],
-      zoom,
-      pitch,
-      bearing
-    });
-  }
-
-  loop(now) {
-    const dt = Math.min((now - this.lastTime) / 1000, 0.05);
-    this.lastTime = now;
-
-    this.updatePhysics(dt);
-    this.updateCamera();
-    this.map.triggerRepaint();
-
-    requestAnimationFrame((time) => this.loop(time));
-  }
-
-  metersToLngLat(lng, lat, eastMeters, northMeters) {
-    const metersPerDegreeLat = 111320;
-    const metersPerDegreeLng = 111320 * Math.cos(lat * Math.PI / 180);
-
-    return {
-      lng: lng + eastMeters / metersPerDegreeLng,
-      lat: lat + northMeters / metersPerDegreeLat
-    };
-  }
-
-  clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-  }
-}
-
-new BusSimulator(CONFIG);
+    new BusSimulator(CONFIG);
+  </script>
+</body>
+</html>
