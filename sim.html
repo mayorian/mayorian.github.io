@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Bus Simulator - Three.js + MapLibre + Mapy.cz</title>
+  <title>3D Bus Simulator - MapLibre + Three.js + Mapy.cz</title>
 
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
 
@@ -30,10 +30,10 @@
       padding: 12px 14px;
       border-radius: 12px;
       color: white;
-      background: rgba(0, 0, 0, 0.58);
+      background: rgba(0, 0, 0, 0.62);
       line-height: 1.45;
       user-select: none;
-      max-width: 420px;
+      max-width: 430px;
       backdrop-filter: blur(8px);
     }
 
@@ -47,10 +47,10 @@
 
   <div id="hud">
     <b>3D Bus Simulator - Košice</b><br />
-    WASD = jazda priamo po mape<br />
+    W = plyn, S = brzda / cúvanie<br />
+    A / D = zatáčanie<br />
     C = prepnutie kamery<br />
-    Ľavé tlačidlo myši + pohyb = pohyb kamery<br />
-    Koliesko = zoom mapy<br />
+    Ľavé tlačidlo myši + pohyb = otočenie kamery okolo autobusu<br />
     Kamera: <span id="camera-mode">Follow</span><br />
     Rýchlosť: <span id="speed">0</span> km/h
   </div>
@@ -93,9 +93,7 @@
           {
             id: 'mapy-basic-layer',
             type: 'raster',
-            source: 'mapy-basic',
-            minzoom: 0,
-            maxzoom: 19
+            source: 'mapy-basic'
           }
         ]
       },
@@ -107,6 +105,10 @@
       attributionControl: true
     });
 
+    map.dragPan.disable();
+    map.dragRotate.disable();
+    map.keyboard.disable();
+    map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
     const keys = { w: false, a: false, s: false, d: false };
@@ -114,48 +116,58 @@
     let busLng = START.lng;
     let busLat = START.lat;
     let speed = 0;
-    let heading = 0; // stupne, 0 = sever
+    let heading = 0; // 0 = sever, 90 = východ
     let steering = 0;
+
     let cameraMode = 0;
     const cameraModes = ['Follow', 'Driver', 'Top'];
-
-    let mouseDragging = false;
+    let cameraYawOffset = 0;
+    let cameraPitch = 68;
+    let dragging = false;
     let lastMouseX = 0;
     let lastMouseY = 0;
-    let cameraYawOffset = 0;
-    let cameraPitch = 65;
 
     const speedEl = document.getElementById('speed');
     const cameraModeEl = document.getElementById('camera-mode');
 
-    window.addEventListener('keydown', (event) => {
+    function blockBrowserKeys(event) {
       const key = event.key.toLowerCase();
+      if (['w', 'a', 's', 'd', 'c', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) {
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener('keydown', (event) => {
+      blockBrowserKeys(event);
+      const key = event.key.toLowerCase();
+
       if (key in keys) keys[key] = true;
 
-      if (key === 'c') {
+      if (key === 'c' && !event.repeat) {
         cameraMode = (cameraMode + 1) % cameraModes.length;
         cameraModeEl.textContent = cameraModes[cameraMode];
       }
     });
 
     window.addEventListener('keyup', (event) => {
+      blockBrowserKeys(event);
       const key = event.key.toLowerCase();
       if (key in keys) keys[key] = false;
     });
 
     map.getCanvas().addEventListener('mousedown', (event) => {
       if (event.button !== 0) return;
-      mouseDragging = true;
+      dragging = true;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
     });
 
     window.addEventListener('mouseup', () => {
-      mouseDragging = false;
+      dragging = false;
     });
 
     window.addEventListener('mousemove', (event) => {
-      if (!mouseDragging) return;
+      if (!dragging) return;
 
       const dx = event.clientX - lastMouseX;
       const dy = event.clientY - lastMouseY;
@@ -163,13 +175,12 @@
       lastMouseY = event.clientY;
 
       cameraYawOffset += dx * 0.25;
-      cameraPitch = Math.max(20, Math.min(80, cameraPitch - dy * 0.18));
+      cameraPitch = Math.max(15, Math.min(82, cameraPitch - dy * 0.18));
     });
 
     function metersToLngLat(lng, lat, eastMeters, northMeters) {
       const metersPerDegreeLat = 111320;
       const metersPerDegreeLng = 111320 * Math.cos(lat * Math.PI / 180);
-
       return {
         lng: lng + eastMeters / metersPerDegreeLng,
         lat: lat + northMeters / metersPerDegreeLat
@@ -179,46 +190,57 @@
     function createBusModel() {
       const group = new THREE.Group();
 
-      function box(size, position, color) {
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(size.x, size.y, size.z),
-          new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.08 })
-        );
-        mesh.position.copy(position);
+      function material(color) {
+        return new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05 });
+      }
+
+      function box(size, pos, color) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), material(color));
+        mesh.position.copy(pos);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         group.add(mesh);
         return mesh;
       }
 
-      // V Three.js modeli je Z dĺžka autobusu, Y výška, X šírka.
-      box(new THREE.Vector3(2.7, 2.8, 8.5), new THREE.Vector3(0, 1.65, 0), 0x1e88e5);
-      box(new THREE.Vector3(2.76, 0.25, 8.6), new THREE.Vector3(0, 3.15, 0), 0xffffff);
-      box(new THREE.Vector3(2.78, 1.05, 0.12), new THREE.Vector3(0, 2.15, -4.32), 0x222222);
-      box(new THREE.Vector3(2.78, 1.0, 0.12), new THREE.Vector3(0, 2.05, 4.32), 0x111111);
+      // Os modelu: X = šírka, Y = výška, Z = smer dopredu.
+      box(new THREE.Vector3(3.2, 3.0, 9.5), new THREE.Vector3(0, 1.7, 0), 0x0066ff);
+      box(new THREE.Vector3(3.25, 0.28, 9.65), new THREE.Vector3(0, 3.28, 0), 0xffffff);
 
-      for (const z of [-2.3, 0.0, 2.3]) {
-        box(new THREE.Vector3(0.08, 0.75, 1.25), new THREE.Vector3(-1.4, 2.15, z), 0x111111);
-        box(new THREE.Vector3(0.08, 0.75, 1.25), new THREE.Vector3(1.4, 2.15, z), 0x111111);
+      // Predné a zadné sklo.
+      box(new THREE.Vector3(2.8, 1.2, 0.12), new THREE.Vector3(0, 2.25, 4.82), 0x111111);
+      box(new THREE.Vector3(2.8, 1.0, 0.12), new THREE.Vector3(0, 2.15, -4.82), 0x151515);
+
+      // Bočné okná.
+      for (const z of [-3.0, -1.2, 0.6, 2.4]) {
+        box(new THREE.Vector3(0.1, 0.85, 1.25), new THREE.Vector3(-1.66, 2.35, z), 0x111111);
+        box(new THREE.Vector3(0.1, 0.85, 1.25), new THREE.Vector3(1.66, 2.35, z), 0x111111);
       }
+
+      // Svetlá, aby bolo jasné, kde je predok.
+      box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(-0.8, 1.05, 4.9), 0xffffaa);
+      box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(0.8, 1.05, 4.9), 0xffffaa);
 
       function wheel(x, z) {
         const mesh = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.45, 0.45, 0.35, 24),
-          new THREE.MeshStandardMaterial({ color: 0x101010, roughness: 0.8 })
+          new THREE.CylinderGeometry(0.55, 0.55, 0.42, 32),
+          new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.85 })
         );
         mesh.rotation.z = Math.PI / 2;
-        mesh.position.set(x, 0.65, z);
+        mesh.position.set(x, 0.7, z);
         mesh.castShadow = true;
         group.add(mesh);
+        return mesh;
       }
 
-      wheel(-1.45, -2.8);
-      wheel(1.45, -2.8);
-      wheel(-1.45, 2.8);
-      wheel(1.45, 2.8);
+      const wheels = [
+        wheel(-1.72, -3.1),
+        wheel(1.72, -3.1),
+        wheel(-1.72, 3.1),
+        wheel(1.72, 3.1)
+      ];
 
-      return group;
+      return { group, wheels };
     }
 
     const busLayer = {
@@ -231,14 +253,15 @@
         this.camera = new THREE.Camera();
         this.scene = new THREE.Scene();
 
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.6);
-        this.scene.add(hemiLight);
+        this.scene.add(new THREE.AmbientLight(0xffffff, 1.6));
 
-        const sun = new THREE.DirectionalLight(0xffffff, 2.0);
-        sun.position.set(100, 180, 100);
+        const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+        sun.position.set(50, 80, 120);
         this.scene.add(sun);
 
-        this.bus = createBusModel();
+        const created = createBusModel();
+        this.bus = created.group;
+        this.wheels = created.wheels;
         this.scene.add(this.bus);
 
         this.renderer = new THREE.WebGLRenderer({
@@ -250,21 +273,29 @@
       },
 
       render(gl, matrix) {
-        const mercator = maplibregl.MercatorCoordinate.fromLngLat(
-          { lng: busLng, lat: busLat },
-          0
-        );
+        const modelOrigin = [busLng, busLat];
+        const mercator = maplibregl.MercatorCoordinate.fromLngLat(modelOrigin, 0);
+        const scale = mercator.meterInMercatorCoordinateUnits();
 
-        const meterScale = mercator.meterInMercatorCoordinateUnits();
+        // MapLibre custom layer transform. Toto dáva model priamo na mapu v metrovej mierke.
+        const rotationX = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+        const rotationY = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0, 1, 0), 0);
+        const rotationZ = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0, 0, 1), -THREE.MathUtils.degToRad(heading));
 
         const modelMatrix = new THREE.Matrix4()
           .makeTranslation(mercator.x, mercator.y, mercator.z)
-          .scale(new THREE.Vector3(meterScale, -meterScale, meterScale))
-          .multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2))
-          .multiply(new THREE.Matrix4().makeRotationZ(-THREE.MathUtils.degToRad(heading)));
+          .scale(new THREE.Vector3(scale, -scale, scale))
+          .multiply(rotationX)
+          .multiply(rotationY)
+          .multiply(rotationZ);
 
-        const mapMatrix = new THREE.Matrix4().fromArray(matrix);
-        this.camera.projectionMatrix = mapMatrix.multiply(modelMatrix);
+        this.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix).multiply(modelMatrix);
+
+        if (this.wheels) {
+          for (const wheel of this.wheels) {
+            wheel.rotation.x += speed * 0.02;
+          }
+        }
 
         this.renderer.resetState();
         this.renderer.render(this.scene, this.camera);
@@ -276,14 +307,12 @@
       map.addLayer(busLayer);
     });
 
-    let lastTime = performance.now();
-
     function updatePhysics(dt) {
-      const acceleration = 8.5;
-      const braking = 13.0;
-      const friction = 4.0;
-      const maxSpeed = 18.0;     // m/s = 64.8 km/h
-      const maxReverse = -5.0;
+      const acceleration = 7.5;
+      const braking = 11.0;
+      const friction = 3.5;
+      const maxSpeed = 15.0;
+      const maxReverse = -4.0;
 
       if (keys.w) speed += acceleration * dt;
       if (keys.s) speed -= braking * dt;
@@ -297,16 +326,15 @@
       speed = Math.max(maxReverse, Math.min(maxSpeed, speed));
 
       const steerTarget = (keys.a ? -1 : 0) + (keys.d ? 1 : 0);
-      steering += (steerTarget - steering) * Math.min(1, 8 * dt);
+      steering += (steerTarget - steering) * Math.min(1, 7 * dt);
 
-      const turnRate = 58; // stupne za sekundu pri vyššej rýchlosti
-      heading += steering * turnRate * (speed / maxSpeed) * dt;
+      const speedFactor = Math.min(1, Math.abs(speed) / maxSpeed);
+      const reverseFactor = speed >= 0 ? 1 : -1;
+      heading += steering * reverseFactor * 60 * speedFactor * dt;
 
-      // 0 stupňov = sever. East/North pohyb v metroch.
-      const headingRad = THREE.MathUtils.degToRad(heading);
-      const east = Math.sin(headingRad) * speed * dt;
-      const north = Math.cos(headingRad) * speed * dt;
-
+      const rad = THREE.MathUtils.degToRad(heading);
+      const east = Math.sin(rad) * speed * dt;
+      const north = Math.cos(rad) * speed * dt;
       const next = metersToLngLat(busLng, busLat, east, north);
       busLng = next.lng;
       busLat = next.lat;
@@ -314,27 +342,21 @@
       speedEl.textContent = Math.abs(speed * 3.6).toFixed(0);
     }
 
-    function updateMapCamera() {
-      let zoom = map.getZoom();
+    function updateCamera() {
+      let zoom = 18.4;
       let pitch = cameraPitch;
       let bearing = -heading + cameraYawOffset;
 
-      if (cameraMode === 0) {
-        zoom = 18;
-        pitch = cameraPitch;
-        bearing = -heading + cameraYawOffset;
-      }
-
       if (cameraMode === 1) {
-        zoom = 19;
+        zoom = 19.5;
         pitch = 78;
         bearing = -heading + cameraYawOffset;
       }
 
       if (cameraMode === 2) {
-        zoom = 18;
+        zoom = 18.2;
         pitch = 0;
-        bearing = -heading + cameraYawOffset;
+        bearing = cameraYawOffset;
       }
 
       map.jumpTo({
@@ -345,12 +367,14 @@
       });
     }
 
+    let lastTime = performance.now();
+
     function loop(now) {
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
 
       updatePhysics(dt);
-      updateMapCamera();
+      updateCamera();
       map.triggerRepaint();
 
       requestAnimationFrame(loop);
@@ -365,7 +389,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Bus Simulator - Three.js + MapLibre + Mapy.cz</title>
+  <title>3D Bus Simulator - MapLibre + Three.js + Mapy.cz</title>
 
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
 
@@ -392,10 +416,10 @@
       padding: 12px 14px;
       border-radius: 12px;
       color: white;
-      background: rgba(0, 0, 0, 0.58);
+      background: rgba(0, 0, 0, 0.62);
       line-height: 1.45;
       user-select: none;
-      max-width: 420px;
+      max-width: 430px;
       backdrop-filter: blur(8px);
     }
 
@@ -409,10 +433,10 @@
 
   <div id="hud">
     <b>3D Bus Simulator - Košice</b><br />
-    WASD = jazda priamo po mape<br />
+    W = plyn, S = brzda / cúvanie<br />
+    A / D = zatáčanie<br />
     C = prepnutie kamery<br />
-    Ľavé tlačidlo myši + pohyb = pohyb kamery<br />
-    Koliesko = zoom mapy<br />
+    Ľavé tlačidlo myši + pohyb = otočenie kamery okolo autobusu<br />
     Kamera: <span id="camera-mode">Follow</span><br />
     Rýchlosť: <span id="speed">0</span> km/h
   </div>
@@ -455,9 +479,7 @@
           {
             id: 'mapy-basic-layer',
             type: 'raster',
-            source: 'mapy-basic',
-            minzoom: 0,
-            maxzoom: 19
+            source: 'mapy-basic'
           }
         ]
       },
@@ -469,6 +491,10 @@
       attributionControl: true
     });
 
+    map.dragPan.disable();
+    map.dragRotate.disable();
+    map.keyboard.disable();
+    map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
     const keys = { w: false, a: false, s: false, d: false };
@@ -476,48 +502,58 @@
     let busLng = START.lng;
     let busLat = START.lat;
     let speed = 0;
-    let heading = 0; // stupne, 0 = sever
+    let heading = 0; // 0 = sever, 90 = východ
     let steering = 0;
+
     let cameraMode = 0;
     const cameraModes = ['Follow', 'Driver', 'Top'];
-
-    let mouseDragging = false;
+    let cameraYawOffset = 0;
+    let cameraPitch = 68;
+    let dragging = false;
     let lastMouseX = 0;
     let lastMouseY = 0;
-    let cameraYawOffset = 0;
-    let cameraPitch = 65;
 
     const speedEl = document.getElementById('speed');
     const cameraModeEl = document.getElementById('camera-mode');
 
-    window.addEventListener('keydown', (event) => {
+    function blockBrowserKeys(event) {
       const key = event.key.toLowerCase();
+      if (['w', 'a', 's', 'd', 'c', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) {
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener('keydown', (event) => {
+      blockBrowserKeys(event);
+      const key = event.key.toLowerCase();
+
       if (key in keys) keys[key] = true;
 
-      if (key === 'c') {
+      if (key === 'c' && !event.repeat) {
         cameraMode = (cameraMode + 1) % cameraModes.length;
         cameraModeEl.textContent = cameraModes[cameraMode];
       }
     });
 
     window.addEventListener('keyup', (event) => {
+      blockBrowserKeys(event);
       const key = event.key.toLowerCase();
       if (key in keys) keys[key] = false;
     });
 
     map.getCanvas().addEventListener('mousedown', (event) => {
       if (event.button !== 0) return;
-      mouseDragging = true;
+      dragging = true;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
     });
 
     window.addEventListener('mouseup', () => {
-      mouseDragging = false;
+      dragging = false;
     });
 
     window.addEventListener('mousemove', (event) => {
-      if (!mouseDragging) return;
+      if (!dragging) return;
 
       const dx = event.clientX - lastMouseX;
       const dy = event.clientY - lastMouseY;
@@ -525,13 +561,12 @@
       lastMouseY = event.clientY;
 
       cameraYawOffset += dx * 0.25;
-      cameraPitch = Math.max(20, Math.min(80, cameraPitch - dy * 0.18));
+      cameraPitch = Math.max(15, Math.min(82, cameraPitch - dy * 0.18));
     });
 
     function metersToLngLat(lng, lat, eastMeters, northMeters) {
       const metersPerDegreeLat = 111320;
       const metersPerDegreeLng = 111320 * Math.cos(lat * Math.PI / 180);
-
       return {
         lng: lng + eastMeters / metersPerDegreeLng,
         lat: lat + northMeters / metersPerDegreeLat
@@ -541,46 +576,57 @@
     function createBusModel() {
       const group = new THREE.Group();
 
-      function box(size, position, color) {
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(size.x, size.y, size.z),
-          new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.08 })
-        );
-        mesh.position.copy(position);
+      function material(color) {
+        return new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05 });
+      }
+
+      function box(size, pos, color) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), material(color));
+        mesh.position.copy(pos);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         group.add(mesh);
         return mesh;
       }
 
-      // V Three.js modeli je Z dĺžka autobusu, Y výška, X šírka.
-      box(new THREE.Vector3(2.7, 2.8, 8.5), new THREE.Vector3(0, 1.65, 0), 0x1e88e5);
-      box(new THREE.Vector3(2.76, 0.25, 8.6), new THREE.Vector3(0, 3.15, 0), 0xffffff);
-      box(new THREE.Vector3(2.78, 1.05, 0.12), new THREE.Vector3(0, 2.15, -4.32), 0x222222);
-      box(new THREE.Vector3(2.78, 1.0, 0.12), new THREE.Vector3(0, 2.05, 4.32), 0x111111);
+      // Os modelu: X = šírka, Y = výška, Z = smer dopredu.
+      box(new THREE.Vector3(3.2, 3.0, 9.5), new THREE.Vector3(0, 1.7, 0), 0x0066ff);
+      box(new THREE.Vector3(3.25, 0.28, 9.65), new THREE.Vector3(0, 3.28, 0), 0xffffff);
 
-      for (const z of [-2.3, 0.0, 2.3]) {
-        box(new THREE.Vector3(0.08, 0.75, 1.25), new THREE.Vector3(-1.4, 2.15, z), 0x111111);
-        box(new THREE.Vector3(0.08, 0.75, 1.25), new THREE.Vector3(1.4, 2.15, z), 0x111111);
+      // Predné a zadné sklo.
+      box(new THREE.Vector3(2.8, 1.2, 0.12), new THREE.Vector3(0, 2.25, 4.82), 0x111111);
+      box(new THREE.Vector3(2.8, 1.0, 0.12), new THREE.Vector3(0, 2.15, -4.82), 0x151515);
+
+      // Bočné okná.
+      for (const z of [-3.0, -1.2, 0.6, 2.4]) {
+        box(new THREE.Vector3(0.1, 0.85, 1.25), new THREE.Vector3(-1.66, 2.35, z), 0x111111);
+        box(new THREE.Vector3(0.1, 0.85, 1.25), new THREE.Vector3(1.66, 2.35, z), 0x111111);
       }
+
+      // Svetlá, aby bolo jasné, kde je predok.
+      box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(-0.8, 1.05, 4.9), 0xffffaa);
+      box(new THREE.Vector3(0.45, 0.25, 0.08), new THREE.Vector3(0.8, 1.05, 4.9), 0xffffaa);
 
       function wheel(x, z) {
         const mesh = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.45, 0.45, 0.35, 24),
-          new THREE.MeshStandardMaterial({ color: 0x101010, roughness: 0.8 })
+          new THREE.CylinderGeometry(0.55, 0.55, 0.42, 32),
+          new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.85 })
         );
         mesh.rotation.z = Math.PI / 2;
-        mesh.position.set(x, 0.65, z);
+        mesh.position.set(x, 0.7, z);
         mesh.castShadow = true;
         group.add(mesh);
+        return mesh;
       }
 
-      wheel(-1.45, -2.8);
-      wheel(1.45, -2.8);
-      wheel(-1.45, 2.8);
-      wheel(1.45, 2.8);
+      const wheels = [
+        wheel(-1.72, -3.1),
+        wheel(1.72, -3.1),
+        wheel(-1.72, 3.1),
+        wheel(1.72, 3.1)
+      ];
 
-      return group;
+      return { group, wheels };
     }
 
     const busLayer = {
@@ -593,14 +639,15 @@
         this.camera = new THREE.Camera();
         this.scene = new THREE.Scene();
 
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.6);
-        this.scene.add(hemiLight);
+        this.scene.add(new THREE.AmbientLight(0xffffff, 1.6));
 
-        const sun = new THREE.DirectionalLight(0xffffff, 2.0);
-        sun.position.set(100, 180, 100);
+        const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+        sun.position.set(50, 80, 120);
         this.scene.add(sun);
 
-        this.bus = createBusModel();
+        const created = createBusModel();
+        this.bus = created.group;
+        this.wheels = created.wheels;
         this.scene.add(this.bus);
 
         this.renderer = new THREE.WebGLRenderer({
@@ -612,21 +659,29 @@
       },
 
       render(gl, matrix) {
-        const mercator = maplibregl.MercatorCoordinate.fromLngLat(
-          { lng: busLng, lat: busLat },
-          0
-        );
+        const modelOrigin = [busLng, busLat];
+        const mercator = maplibregl.MercatorCoordinate.fromLngLat(modelOrigin, 0);
+        const scale = mercator.meterInMercatorCoordinateUnits();
 
-        const meterScale = mercator.meterInMercatorCoordinateUnits();
+        // MapLibre custom layer transform. Toto dáva model priamo na mapu v metrovej mierke.
+        const rotationX = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+        const rotationY = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0, 1, 0), 0);
+        const rotationZ = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0, 0, 1), -THREE.MathUtils.degToRad(heading));
 
         const modelMatrix = new THREE.Matrix4()
           .makeTranslation(mercator.x, mercator.y, mercator.z)
-          .scale(new THREE.Vector3(meterScale, -meterScale, meterScale))
-          .multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2))
-          .multiply(new THREE.Matrix4().makeRotationZ(-THREE.MathUtils.degToRad(heading)));
+          .scale(new THREE.Vector3(scale, -scale, scale))
+          .multiply(rotationX)
+          .multiply(rotationY)
+          .multiply(rotationZ);
 
-        const mapMatrix = new THREE.Matrix4().fromArray(matrix);
-        this.camera.projectionMatrix = mapMatrix.multiply(modelMatrix);
+        this.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix).multiply(modelMatrix);
+
+        if (this.wheels) {
+          for (const wheel of this.wheels) {
+            wheel.rotation.x += speed * 0.02;
+          }
+        }
 
         this.renderer.resetState();
         this.renderer.render(this.scene, this.camera);
@@ -638,14 +693,12 @@
       map.addLayer(busLayer);
     });
 
-    let lastTime = performance.now();
-
     function updatePhysics(dt) {
-      const acceleration = 8.5;
-      const braking = 13.0;
-      const friction = 4.0;
-      const maxSpeed = 18.0;     // m/s = 64.8 km/h
-      const maxReverse = -5.0;
+      const acceleration = 7.5;
+      const braking = 11.0;
+      const friction = 3.5;
+      const maxSpeed = 15.0;
+      const maxReverse = -4.0;
 
       if (keys.w) speed += acceleration * dt;
       if (keys.s) speed -= braking * dt;
@@ -659,16 +712,15 @@
       speed = Math.max(maxReverse, Math.min(maxSpeed, speed));
 
       const steerTarget = (keys.a ? -1 : 0) + (keys.d ? 1 : 0);
-      steering += (steerTarget - steering) * Math.min(1, 8 * dt);
+      steering += (steerTarget - steering) * Math.min(1, 7 * dt);
 
-      const turnRate = 58; // stupne za sekundu pri vyššej rýchlosti
-      heading += steering * turnRate * (speed / maxSpeed) * dt;
+      const speedFactor = Math.min(1, Math.abs(speed) / maxSpeed);
+      const reverseFactor = speed >= 0 ? 1 : -1;
+      heading += steering * reverseFactor * 60 * speedFactor * dt;
 
-      // 0 stupňov = sever. East/North pohyb v metroch.
-      const headingRad = THREE.MathUtils.degToRad(heading);
-      const east = Math.sin(headingRad) * speed * dt;
-      const north = Math.cos(headingRad) * speed * dt;
-
+      const rad = THREE.MathUtils.degToRad(heading);
+      const east = Math.sin(rad) * speed * dt;
+      const north = Math.cos(rad) * speed * dt;
       const next = metersToLngLat(busLng, busLat, east, north);
       busLng = next.lng;
       busLat = next.lat;
@@ -676,27 +728,21 @@
       speedEl.textContent = Math.abs(speed * 3.6).toFixed(0);
     }
 
-    function updateMapCamera() {
-      let zoom = map.getZoom();
+    function updateCamera() {
+      let zoom = 18.4;
       let pitch = cameraPitch;
       let bearing = -heading + cameraYawOffset;
 
-      if (cameraMode === 0) {
-        zoom = 18;
-        pitch = cameraPitch;
-        bearing = -heading + cameraYawOffset;
-      }
-
       if (cameraMode === 1) {
-        zoom = 19;
+        zoom = 19.5;
         pitch = 78;
         bearing = -heading + cameraYawOffset;
       }
 
       if (cameraMode === 2) {
-        zoom = 18;
+        zoom = 18.2;
         pitch = 0;
-        bearing = -heading + cameraYawOffset;
+        bearing = cameraYawOffset;
       }
 
       map.jumpTo({
@@ -707,12 +753,14 @@
       });
     }
 
+    let lastTime = performance.now();
+
     function loop(now) {
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
 
       updatePhysics(dt);
-      updateMapCamera();
+      updateCamera();
       map.triggerRepaint();
 
       requestAnimationFrame(loop);
