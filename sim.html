@@ -57,16 +57,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js"
-      }
-    }
-  </script>
-
   <script type="module">
-    import * as THREE from 'three';
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js';
 
     const MAPY_API_KEY = 'nbFiyzGOyKx-2gJsBXzfGv4iPyzn4ykNCdd1Zno3gH0';
 
@@ -155,28 +147,38 @@
       if (key in keys) keys[key] = false;
     });
 
-    map.getCanvas().addEventListener('mousedown', (event) => {
+    window.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
+      if (event.target.closest && event.target.closest('#hud')) return;
+
+      event.preventDefault();
       dragging = true;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
+      map.getCanvas().setPointerCapture?.(event.pointerId);
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('pointerup', (event) => {
+      dragging = false;
+      map.getCanvas().releasePointerCapture?.(event.pointerId);
+    });
+
+    window.addEventListener('pointercancel', () => {
       dragging = false;
     });
 
-    window.addEventListener('mousemove', (event) => {
+    window.addEventListener('pointermove', (event) => {
       if (!dragging) return;
 
+      event.preventDefault();
       const dx = event.clientX - lastMouseX;
       const dy = event.clientY - lastMouseY;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
 
-      cameraYawOffset += dx * 0.25;
-      cameraPitch = Math.max(15, Math.min(82, cameraPitch - dy * 0.18));
-    });
+      cameraYawOffset += dx * 0.35;
+      cameraPitch = Math.max(15, Math.min(82, cameraPitch - dy * 0.22));
+    }, { passive: false });
 
     function metersToLngLat(lng, lat, eastMeters, northMeters) {
       const metersPerDegreeLat = 111320;
