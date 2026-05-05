@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ukážka horného menu</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: white;
+      color: #111;
+    }
+
+    .top-bar {
+      width: 100%;
+      height: 42px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .menu {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      height: 100%;
+    }
+
+    .menu li {
+      position: relative;
+    }
+
+    .menu > li > a,
+    .submenu a {
+      color: #00ff66;
+      text-decoration: none;
+      display: block;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .menu > li > a {
+      padding: 13px 18px;
+      font-size: 14px;
+      line-height: 16px;
+    }
+
+    .menu li:hover > a {
+      background: #101010;
+    }
+
+    .submenu {
+      list-style: none;
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 100%;
+      min-width: 190px;
+      background: #000;
+      border: 1px solid #1f1f1f;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .submenu .submenu {
+      left: 100%;
+      top: -1px;
+    }
+
+    .menu li:hover > .submenu {
+      display: block;
+    }
+
+    .submenu a {
+      padding: 10px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid #151515;
+    }
+
+    .submenu a:hover {
+      background: #111;
+    }
+
+    .has-sub > a::after {
+      content: " ›";
+      float: right;
+      margin-left: 18px;
+    }
+
+    .checked::before {
+      content: "✓ ";
+      color: #00ff66;
+      font-weight: bold;
+    }
+
+    .content {
+      padding: 40px 24px;
+    }
+
+    .content h1 {
+      margin-bottom: 12px;
+      font-size: 28px;
+    }
+
+    .content p {
+      color: #444;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-bar">
+    <ul class="menu">
+      <li class="has-sub">
+        <a>Hra</a>
+        <ul class="submenu">
+          <li><a class="option">Pozastaviť</a></li>
+          <li><a class="option">Resetnúť</a></li>
+          <li><a class="option">Ukončiť</a></li>
+        </ul>
+      </li>
+
+      <li class="has-sub">
+        <a>Grafika</a>
+        <ul class="submenu">
+          <li class="has-sub">
+            <a>Rozlíšenie</a>
+            <ul class="submenu group" data-group="rozlisenie">
+              <li><a class="option">1280 × 720</a></li>
+              <li><a class="option">1600 × 900</a></li>
+              <li><a class="option">1920 × 1080</a></li>
+              <li><a class="option">2560 × 1440</a></li>
+              <li><a class="option">3840 × 2160</a></li>
+            </ul>
+          </li>
+
+          <li class="has-sub">
+            <a>Tiene</a>
+            <ul class="submenu group" data-group="tiene">
+              <li><a class="option">Nízke</a></li>
+              <li><a class="option">Stredné</a></li>
+              <li><a class="option">Vysoké</a></li>
+              <li><a class="option">Ultra</a></li>
+            </ul>
+          </li>
+
+          <li class="has-sub">
+            <a>Detaily textúr</a>
+            <ul class="submenu group" data-group="detaily-textur">
+              <li><a class="option">Nízke</a></li>
+              <li><a class="option">Stredné</a></li>
+              <li><a class="option">Vysoké</a></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+
+      <li class="has-sub">
+        <a>Zvuk</a>
+        <ul class="submenu">
+          <li class="has-sub">
+            <a>Hlasitosť</a>
+            <ul class="submenu group" data-group="hlasitost">
+              <li><a class="option">0</a></li>
+              <li><a class="option">20</a></li>
+              <li><a class="option">40</a></li>
+              <li><a class="option">60</a></li>
+              <li><a class="option">80</a></li>
+              <li><a class="option">100</a></li>
+            </ul>
+          </li>
+          <li><a class="option toggle">Vypnúť</a></li>
+          <li><a class="option toggle">Zapnúť</a></li>
+        </ul>
+      </li>
+
+      <li class="has-sub">
+        <a>Efekty</a>
+        <ul class="submenu">
+          <li class="has-sub">
+            <a>Odrazy materiálov</a>
+            <ul class="submenu group" data-group="odrazy-materialov">
+              <li><a class="option">Vypnuté</a></li>
+              <li><a class="option">Zapnuté</a></li>
+            </ul>
+          </li>
+
+          <li class="has-sub">
+            <a>Obloha</a>
+            <ul class="submenu group" data-group="obloha">
+              <li><a class="option">Realistická</a></li>
+              <li><a class="option">SkyBox</a></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+
+      <li class="has-sub">
+        <a>Počasie</a>
+        <ul class="submenu">
+          <li class="has-sub">
+            <a>Rýchlosť oblakov</a>
+            <ul class="submenu group" data-group="rychlost-oblakov">
+              <li><a class="option">0</a></li>
+              <li><a class="option">100</a></li>
+              <li><a class="option">200</a></li>
+              <li><a class="option">300</a></li>
+            </ul>
+          </li>
+
+          <li class="has-sub">
+            <a>Módy počasia</a>
+            <ul class="submenu group" data-group="mody-pocasia">
+              <li><a class="option">Jasno</a></li>
+              <li><a class="option">Oblačno</a></li>
+              <li><a class="option">Búrka</a></li>
+              <li><a class="option">Hmla</a></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+
+      <li class="has-sub">
+        <a>Trasa</a>
+        <ul class="submenu group" data-group="trasa">
+          <li><a class="option">Poprad-Tatry</a></li>
+          <li><a class="option">Starý Smokovec</a></li>
+        </ul>
+      </li>
+
+      <li class="has-sub">
+        <a>Transparent</a>
+        <ul class="submenu group" data-group="transparent">
+          <li><a class="option">STARY SMOKOVEC</a></li>
+          <li><a class="option">POPRAD TATRY</a></li>
+          <li><a class="option">PORUCHA</a></li>
+          <li><a class="option">TEZSIM</a></li>
+          <li><a class="option">PRESTAVKA</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <h1>Ukážka menu</h1>
+    <p>Prejdi myšou cez horné položky menu a klikni na možnosť. Vybraná položka dostane značku ✓.</p>
+  </main>
+
+  <script>
+    const options = document.querySelectorAll('.option');
+
+    options.forEach(option => {
+      option.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const group = option.closest('.group');
+
+        if (group) {
+          group.querySelectorAll('.option').forEach(item => {
+            item.classList.remove('checked');
+          });
+        }
+
+        option.classList.toggle('checked');
+      });
+    });
+  </script>
+</body>
+</html>
